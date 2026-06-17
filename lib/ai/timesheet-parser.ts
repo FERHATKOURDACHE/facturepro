@@ -22,52 +22,90 @@ export const ExtractedTimesheetSchema = z.object({
 
 export type ExtractedTimesheet = z.infer<typeof ExtractedTimesheetSchema>;
 
+const MONTHS: Record<string, string> = {
+  janvier: "01",
+  fevrier: "02",
+  février: "02",
+  mars: "03",
+  avril: "04",
+  mai: "05",
+  juin: "06",
+  juillet: "07",
+  aout: "08",
+  août: "08",
+  septembre: "09",
+  octobre: "10",
+  novembre: "11",
+  decembre: "12",
+  décembre: "12",
+};
+
+const WEEKDAYS = [
+  "lundi",
+  "mardi",
+  "mercredi",
+  "jeudi",
+  "vendredi",
+  "samedi",
+  "dimanche",
+];
+
+type ParsedDate = {
+  isoDate: string;
+  raw: string;
+};
+
+type ParsedTimeRange = {
+  startTime: string;
+  endTime: string;
+  raw: string;
+  index: number;
+};
+
 export function fallbackTimesheetExtraction(text: string): ExtractedTimesheet {
-  const lines = text
+  const normalizedText = normalizeText(text);
+
+  const lines = normalizedText
     .split(/\n|\r|;/)
     .map((line) => line.trim())
     .filter(Boolean);
 
   const missions: ExtractedTimesheet["missions"] = [];
 
-  const dateRegex = /(\d{1,2})[\/\-\.\s](\d{1,2})(?:[\/\-\.\s](\d{2,4}))?/;
-  const timeRegex = /(\d{1,2})[:hH\.]?(\d{2})?\s*(?:jusqu[e'àa]*|a|à|-)\s*(\d{1,2})[:hH\.]?(\d{2})?/i;
-  const rateRegex = /(\d+(?:[\.,]\d+)?)\s*(?:€|eur|euros)\s*(?:\/h|par heure|l'heure)?/i;
-  const fuelRegex = /(essence|carburant|frais).*?(\d+(?:[\.,]\d+)?)\s*(?:€|eur|euros)?/i;
-
   for (const line of lines) {
-    const dateMatch = line.match(dateRegex);
-    const timeMatch = line.match(timeRegex);
+    const parsedDate = extractDate(line);
+    if (!parsedDate) continue;
 
-    if (!dateMatch || !timeMatch) continue;
+    const timeRanges = extractTimeRanges(line);
+    if (timeRanges.length === 0) continue;
 
-    const day = dateMatch[1].padStart(2, "0");
-    const month = dateMatch[2].padStart(2, "0");
-    const year = dateMatch[3] ? normalizeYear(dateMatch[3]) : new Date().getUTCFullYear().toString();
+    for (let index = 0; index < timeRanges.length; index += 1) {
+      const currentRange = timeRanges[index];
+      const nextRange = timeRanges[index + 1];
 
-    const startHour = timeMatch[1].padStart(2, "0");
-    const startMinute = (timeMatch[2] ?? "00").padStart(2, "0");
-    const endHour = timeMatch[3].padStart(2, "0");
-    const endMinute = (timeMatch[4] ?? "00").padStart(2, "0");
+      const locationSegment = line.slice(
+        currentRange.index + currentRange.raw.length,
+        nextRange?.index ?? line.length
+      );
 
-    const rateMatch = line.match(rateRegex);
-    const fuelMatch = line.match(fuelRegex);
-
-    missions.push({
-      date: `${year}-${month}-${day}`,
-      startTime: `${startHour}:${startMinute}`,
-      endTime: `${endHour}:${endMinute}`,
-      locationName: cleanLocation(line),
-      hourlyRate: rateMatch ? Number(rateMatch[1].replace(",", ".")) : null,
-      fuelAmount: fuelMatch ? Number(fuelMatch[2].replace(",", ".")) : null,
-      notes: "Extraction automatique locale - à vérifier",
-    });
+      missions.push({
+        date: parsedDate.isoDate,
+        startTime: currentRange.startTime,
+        endTime: currentRange.endTime,
+        locationName: cleanLocation(locationSegment),
+        hourlyRate: extractHourlyRate(line),
+        fuelAmount: extractFuelAmount(line),
+        notes: "Extraction automatique locale - à vérifier",
+      });
+    }
   }
 
   const totalEstimatedHours = missions.reduce((sum, mission) => {
     const start = timeToMinutes(mission.startTime);
     const end = timeToMinutes(mission.endTime);
-    return sum + Math.max(0, end - start) / 60;
+    const duration = end >= start ? end - start : end + 24 * 60 - start;
+
+    return sum + duration / 60;
   }, 0);
 
   return {
@@ -83,9 +121,141 @@ export function fallbackTimesheetExtraction(text: string): ExtractedTimesheet {
   };
 }
 
+function normalizeText(value: string) {
+  return value
+    .replace(/\u00a0/g, " ")
+    .replace(/\u202f/g, " ")
+    .replace(/[’‘]/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractDate(line: string): ParsedDate | null {
+  const numericDate = line.match(
+    /\b(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.](\d{2,4}))?\b/i
+  );
+
+  if (numericDate) {
+    const day = numericDate[1].padStart(2, "0");
+    const month = numericDate[2].padStart(2, "0");
+    const year = numericDate[3]
+      ? normalizeYear(numericDate[3])
+      : new Date().getUTCFullYear().toString();
+
+    return {
+      isoDate: `${year}-${month}-${day}`,
+      raw: numericDate[0],
+    };
+  }
+
+  const weekdayPattern = WEEKDAYS.join("|");
+  const monthPattern = Object.keys(MONTHS).join("|");
+
+  const frenchDate = line.match(
+    new RegExp(
+      `\\b(?:${weekdayPattern})?\\s*(\\d{1,2})\\s+(${monthPattern})\\s+(\\d{2,4})\\b`,
+      "i"
+    )
+  );
+
+  if (!frenchDate) return null;
+
+  const day = frenchDate[1].padStart(2, "0");
+  const month = MONTHS[frenchDate[2].toLowerCase()];
+  const year = normalizeYear(frenchDate[3]);
+
+  return {
+    isoDate: `${year}-${month}-${day}`,
+    raw: frenchDate[0],
+  };
+}
+
+function extractTimeRanges(line: string): ParsedTimeRange[] {
+  const ranges: ParsedTimeRange[] = [];
+
+  const regex =
+    /(?:de\s*)?(\d{1,2})(?:[:hH.](\d{2}))?\s*(?:jusqu(?:e)?(?:\s*(?:à|a))?|jusqu'à|jusqua|jusqu a|jusqu à|à|a|-)\s*(\d{1,2})(?:[:hH.](\d{2}))?/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(line)) !== null) {
+    const startHour = match[1].padStart(2, "0");
+    const startMinute = (match[2] ?? "00").padStart(2, "0");
+    const endHour = match[3].padStart(2, "0");
+    const endMinute = (match[4] ?? "00").padStart(2, "0");
+
+    ranges.push({
+      startTime: `${startHour}:${startMinute}`,
+      endTime: `${endHour}:${endMinute}`,
+      raw: match[0],
+      index: match.index,
+    });
+  }
+
+  return ranges;
+}
+
+function cleanLocation(segment: string) {
+  const cleaned = segment
+    .replace(/\b(et|de|à|a|chez|mission|travail|prestation|intervention)\b/gi, " ")
+    .replace(/\b\d+(?:[\.,]\d+)?\s*(?:€|eur|euros)\s*(?:\/h|par heure|l'heure)?\b/gi, " ")
+    .replace(/\b(essence|carburant|frais)\b.*?\d+(?:[\.,]\d+)?\s*(?:€|eur|euros)?/gi, " ")
+    .replace(/[,:;.]+/g, " ")
+    .replace(/\s*-\s*/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (cleaned.length < 3) return null;
+
+  return toSmartTitle(cleaned);
+}
+
+function extractHourlyRate(line: string) {
+  const match = line.match(
+    /(\d+(?:[\.,]\d+)?)\s*(?:€|eur|euros)\s*(?:\/h|par heure|l'heure)/i
+  );
+
+  return match ? toNumber(match[1]) : null;
+}
+
+function extractFuelAmount(line: string) {
+  const match = line.match(
+    /\b(?:essence|carburant|frais)\b.*?(\d+(?:[\.,]\d+)?)\s*(?:€|eur|euros)?/i
+  );
+
+  return match ? toNumber(match[1]) : null;
+}
+
+function toSmartTitle(value: string) {
+  const lowerWords = new Set(["sur", "sous", "de", "du", "des", "la", "le", "les", "et"]);
+
+  return value
+    .split(" ")
+    .map((word, wordIndex) =>
+      word
+        .split("-")
+        .map((part, partIndex) => {
+          const lower = part.toLowerCase();
+
+          if (lower === "mcdo") return "McDo";
+          if (lower === "mcdonald" || lower === "mcdonalds") return "McDonald";
+
+          if (wordIndex > 0 && partIndex > 0 && lowerWords.has(lower)) {
+            return lower;
+          }
+
+          if (wordIndex > 0 && lowerWords.has(lower)) {
+            return lower;
+          }
+
+          return lower.charAt(0).toUpperCase() + lower.slice(1);
+        })
+        .join("-")
+    )
+    .join(" ");
+}
+
 function normalizeYear(year: string) {
-  if (year.length === 2) return `20${year}`;
-  return year;
+  return year.length === 2 ? `20${year}` : year;
 }
 
 function timeToMinutes(time: string) {
@@ -93,51 +263,6 @@ function timeToMinutes(time: string) {
   return hours * 60 + minutes;
 }
 
-function cleanLocation(line: string) {
-  const keywords = [
-    "carrefour",
-    "mcdonald",
-    "mcdo",
-    "market",
-    "intermarché",
-    "intermarche",
-    "auchan",
-    "leclerc",
-    "monoprix",
-    "franprix",
-    "casino",
-    "aldi",
-    "lidl",
-  ];
-
-  let cleaned = line
-    // Supprime les dates : 02/05/2026, 02-05-2026, etc.
-    .replace(/\b\d{1,2}[\/\-\.\s]\d{1,2}(?:[\/\-\.\s]\d{2,4})?\b/g, " ")
-
-    // Supprime les horaires : de 09h00 à 17h00, 09h00-17h00, 09:00 à 17:00
-    .replace(/\bde\s+\d{1,2}[:hH\.]?\d{0,2}\s*(?:jusqu[e'àa]*|a|à|-)\s*\d{1,2}[:hH\.]?\d{0,2}\b/gi, " ")
-    .replace(/\b\d{1,2}[:hH\.]?\d{0,2}\s*(?:jusqu[e'àa]*|a|à|-)\s*\d{1,2}[:hH\.]?\d{0,2}\b/gi, " ")
-
-    // Supprime les mots inutiles
-    .replace(/\b(le|la|du|des|mission|travail|intervention|prestation|chez|à|a)\b/gi, " ")
-
-    // Supprime les taux horaires et frais éventuels
-    .replace(/\d+(?:[\.,]\d+)?\s*(?:€|eur|euros)\s*(?:\/h|par heure|l'heure)?/gi, " ")
-    .replace(/\b(essence|carburant|frais)\b.*?\d+(?:[\.,]\d+)?\s*(?:€|eur|euros)?/gi, " ")
-
-    // Nettoyage final
-    .replace(/[,:;.]+/g, " ")
-    .replace(/\s*-\s*/g, "-")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const lower = cleaned.toLowerCase();
-  const keyword = keywords.find((item) => lower.includes(item));
-
-  if (!keyword) return cleaned.length > 2 ? cleaned : null;
-
-  const index = lower.indexOf(keyword);
-  const location = cleaned.slice(index).replace(/\s+/g, " ").trim();
-
-  return location.length > 2 ? location : null;
+function toNumber(value: string) {
+  return Number(value.replace(",", "."));
 }
