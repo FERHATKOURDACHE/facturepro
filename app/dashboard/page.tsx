@@ -1,3 +1,5 @@
+
+import { requireUser } from "@/lib/require-auth";
 import { AppShell } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
 import { getDashboardData } from "@/lib/dashboard-queries";
@@ -8,7 +10,14 @@ import {
   formatTimeUtc,
 } from "@/lib/mission-calculations";
 
+export const dynamic = "force-dynamic";
+
+
+
+
+
 export default async function DashboardPage() {
+  await requireUser();
   const data = await getDashboardData();
 
   return (
