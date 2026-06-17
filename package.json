@@ -1,0 +1,43 @@
+{
+  "name": "facturepro-saas-step1",
+  "version": "0.3.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:seed": "prisma db seed"
+  },
+  "dependencies": {
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "lucide-react": "latest",
+    "@prisma/client": "6.19.2",
+    "decimal.js": "latest",
+    "exceljs": "latest",
+    "openai": "latest",
+    "zod": "latest",
+    "pdf-lib": "^1.17.1"
+  },
+  "devDependencies": {
+    "typescript": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "tailwindcss": "latest",
+    "@tailwindcss/postcss": "latest",
+    "eslint": "latest",
+    "eslint-config-next": "latest",
+    "prisma": "6.19.2",
+    "tsx": "latest"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}

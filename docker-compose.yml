@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: facturepro_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: facturepro
+      POSTGRES_PASSWORD: facturepro_password
+      POSTGRES_DB: facturepro
+    ports:
+      - "5432:5432"
+    volumes:
+      - facturepro_postgres_data:/var/lib/postgresql/data
+
+  adminer:
+    image: adminer:latest
+    container_name: facturepro_adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+
+volumes:
+  facturepro_postgres_data:
