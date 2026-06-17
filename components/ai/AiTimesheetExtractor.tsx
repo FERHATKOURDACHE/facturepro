@@ -146,9 +146,7 @@ export function AiTimesheetExtractor() {
               </table>
             </div>
 
-            <pre className="overflow-x-auto rounded-2xl bg-slate-950 p-4 text-xs text-white">
-              {JSON.stringify(result.data, null, 2)}
-            </pre>
+            
           </div>
         )}
       </section>

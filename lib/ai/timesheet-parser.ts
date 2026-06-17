@@ -126,7 +126,8 @@ function cleanLocation(line: string) {
     .replace(/\b(essence|carburant|frais)\b.*?\d+(?:[\.,]\d+)?\s*(?:€|eur|euros)?/gi, " ")
 
     // Nettoyage final
-    .replace(/[,:;.\-_]+/g, " ")
+    .replace(/[,:;.]+/g, " ")
+    .replace(/\s*-\s*/g, "-")
     .replace(/\s+/g, " ")
     .trim();
 
