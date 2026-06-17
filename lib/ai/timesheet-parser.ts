@@ -94,12 +94,49 @@ function timeToMinutes(time: string) {
 }
 
 function cleanLocation(line: string) {
-  const lower = line.toLowerCase();
-  const keywords = ["carrefour", "mcdonald", "mcdo", "market", "intermarché", "auchan"];
+  const keywords = [
+    "carrefour",
+    "mcdonald",
+    "mcdo",
+    "market",
+    "intermarché",
+    "intermarche",
+    "auchan",
+    "leclerc",
+    "monoprix",
+    "franprix",
+    "casino",
+    "aldi",
+    "lidl",
+  ];
+
+  let cleaned = line
+    // Supprime les dates : 02/05/2026, 02-05-2026, etc.
+    .replace(/\b\d{1,2}[\/\-\.\s]\d{1,2}(?:[\/\-\.\s]\d{2,4})?\b/g, " ")
+
+    // Supprime les horaires : de 09h00 à 17h00, 09h00-17h00, 09:00 à 17:00
+    .replace(/\bde\s+\d{1,2}[:hH\.]?\d{0,2}\s*(?:jusqu[e'àa]*|a|à|-)\s*\d{1,2}[:hH\.]?\d{0,2}\b/gi, " ")
+    .replace(/\b\d{1,2}[:hH\.]?\d{0,2}\s*(?:jusqu[e'àa]*|a|à|-)\s*\d{1,2}[:hH\.]?\d{0,2}\b/gi, " ")
+
+    // Supprime les mots inutiles
+    .replace(/\b(le|la|du|des|mission|travail|intervention|prestation|chez|à|a)\b/gi, " ")
+
+    // Supprime les taux horaires et frais éventuels
+    .replace(/\d+(?:[\.,]\d+)?\s*(?:€|eur|euros)\s*(?:\/h|par heure|l'heure)?/gi, " ")
+    .replace(/\b(essence|carburant|frais)\b.*?\d+(?:[\.,]\d+)?\s*(?:€|eur|euros)?/gi, " ")
+
+    // Nettoyage final
+    .replace(/[,:;.\-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const lower = cleaned.toLowerCase();
   const keyword = keywords.find((item) => lower.includes(item));
 
-  if (!keyword) return null;
+  if (!keyword) return cleaned.length > 2 ? cleaned : null;
 
   const index = lower.indexOf(keyword);
-  return line.slice(index).replace(/\s+/g, " ").trim();
+  const location = cleaned.slice(index).replace(/\s+/g, " ").trim();
+
+  return location.length > 2 ? location : null;
 }
