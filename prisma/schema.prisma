@@ -107,6 +107,9 @@ model User {
   auditLogs      AuditLog[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+  plan                 String   @default("FREE")
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
 }
 
 model Organization {
@@ -394,3 +397,4 @@ model AuditLog {
   @@index([organizationId])
   @@index([userId])
 }
+
