@@ -1,7 +1,11 @@
+import { requireUser } from "@/lib/require-auth";
 import { AppShell } from "@/components/AppShell";
 import { issuer } from "@/lib/data";
 
-export default function ParametresPage() {
+export const dynamic = "force-dynamic";
+
+export default async function ParametresPage() {
+  await requireUser();
   return (
     <AppShell
       title="Paramètres"

@@ -1,8 +1,11 @@
+import { requireUser } from "@/lib/require-auth";
 import { AppShell } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
 import { getUrssafTurnover } from "@/lib/urssaf-queries";
 import { estimateUrssaf, URSSAF_RATES_2026, type UrssafActivityCode } from "@/lib/urssaf-rates";
 import { formatCurrency } from "@/lib/invoice-calculations";
+
+export const dynamic = "force-dynamic";
 
 function firstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -10,9 +13,11 @@ function firstValue(value: string | string[] | undefined) {
 
 export default async function UrssafPage({
   searchParams,
+  
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  await requireUser();
   const params = (await searchParams) ?? {};
   const activity = (firstValue(params.activity) ?? "SERVICE_BNC") as UrssafActivityCode;
   const start = firstValue(params.start) ?? "2026-05-01";

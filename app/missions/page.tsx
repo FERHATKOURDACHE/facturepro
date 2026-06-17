@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/require-auth";
 import { AppShell } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
 import {
@@ -15,6 +16,8 @@ import {
   formatHours,
   formatTimeUtc,
 } from "@/lib/mission-calculations";
+
+export const dynamic = "force-dynamic";
 
 function toInputDate(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -49,6 +52,7 @@ function statusBadge(status: string) {
 }
 
 export default async function MissionsPage() {
+  await requireUser();
   const { clients, missions, stats, weeklyTotals, locationTotals } = await getMissionPageData();
   const defaultClient = clients[0];
 

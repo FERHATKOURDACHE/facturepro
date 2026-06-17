@@ -1,4 +1,5 @@
-import { AppShell } from "@/components/AppShell";
+
+import { requireUser } from "@/lib/require-auth"; import { AppShell } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
 import {
   cancelInvoiceAction,
@@ -11,6 +12,8 @@ import {
   formatCurrency,
   formatHours,
 } from "@/lib/invoice-calculations";
+
+export const dynamic = "force-dynamic";
 
 function formatDate(date: Date | null) {
   if (!date) return "-";
@@ -52,6 +55,7 @@ function decimalToNumber(value: unknown) {
 }
 
 export default async function FacturesPage() {
+  await requireUser();
   const { clients, profiles, invoices, stats } = await getInvoicePageData();
 
   const defaultClient = clients[0];

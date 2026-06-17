@@ -1,7 +1,10 @@
+import { requireUser } from "@/lib/require-auth";
 import { AppShell } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
 import { createClientAction, deleteClientAction, updateClientAction } from "@/app/clients/actions";
 import { getClients, getClientStats } from "@/lib/client-queries";
+
+export const dynamic = "force-dynamic";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("fr-FR", {
@@ -11,7 +14,9 @@ function formatDate(date: Date) {
   }).format(date);
 }
 
+
 export default async function ClientsPage() {
+  await requireUser();
   const [clients, stats] = await Promise.all([getClients(), getClientStats()]);
 
   return (
