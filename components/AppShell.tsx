@@ -73,7 +73,27 @@ export async function AppShell({
           </div>
         </div>
 
-        <nav className="sidebar-scroll mt-6 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
+        <div className="mt-4 rounded-[1.7rem] border border-emerald-300/15 bg-emerald-400/10 p-4">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-200">
+            Flux de travail
+          </p>
+
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {workflowSteps.map((step) => (
+              <span
+                key={step}
+                className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-black text-white"
+              >
+                {step}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <nav
+          aria-label="Navigation principale"
+          className="sidebar-scroll mt-6 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1"
+        >
           {nav.map((item) => {
             const Icon = item.icon;
 
@@ -189,6 +209,23 @@ export async function AppShell({
               </div>
             </div>
 
+            <div className="mt-4 rounded-3xl border border-slate-200 bg-white/80 p-3 lg:hidden">
+              <p className="mb-2 text-xs font-black uppercase tracking-[0.22em] text-slate-500">
+                Parcours rapide
+              </p>
+
+              <div className="flex flex-wrap gap-1.5">
+                {workflowSteps.map((step) => (
+                  <span
+                    key={step}
+                    className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-700"
+                  >
+                    {step}
+                  </span>
+                ))}
+              </div>
+            </div>
+
             <div className="mt-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
               {nav.map((item) => {
                 const Icon = item.icon;
@@ -197,7 +234,7 @@ export async function AppShell({
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700 shadow-sm"
+                    className="flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-[var(--primary)]"
                   >
                     <Icon size={15} />
                     {item.label}
