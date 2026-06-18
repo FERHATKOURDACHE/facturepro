@@ -99,18 +99,24 @@ export default async function MissionsPage({ searchParams }: MissionsPageProps) 
   const { clients, missions, stats, weeklyTotals, locationTotals } = await getMissionPageData();
   const defaultClient = clients[0];
   const draftCount = missions.filter((mission) => mission.status === "DRAFT").length;
+  const validatedCount = missions.filter((mission) => mission.status === "VALIDATED").length;
+  const invoicedCount = missions.filter((mission) => mission.invoiceId).length;
+  const billableCount = missions.filter(
+    (mission) => mission.status === "VALIDATED" && !mission.invoiceId
+  ).length;
+  const todayInput = new Date().toISOString().slice(0, 10);
 
   return (
     <AppShell
       title="Missions & heures"
-      subtitle="Saisie réelle des horaires, calcul automatique des heures et totaux par semaine."
+      subtitle="Saisis, valide, facture et analyse tes heures de mission avec un parcours clair."
     >
       <div className="grid gap-5 md:grid-cols-5">
-        <StatCard label="Missions" value={`${stats.missionCount}`} helper="En base PostgreSQL" />
-        <StatCard label="Heures" value={formatHours(stats.totalHours)} helper="Total calculé" />
+        <StatCard label="Missions" value={`${stats.missionCount}`} helper="Toutes les lignes" />
+        <StatCard label="Heures" value={formatHours(stats.totalHours)} helper="Temps travaillé" />
         <StatCard label="Prestations" value={formatCurrency(stats.totalServices)} helper="Hors frais" />
         <StatCard label="Frais" value={formatCurrency(stats.totalExpenses)} helper="Essence / autres" />
-        <StatCard label="Total" value={formatCurrency(stats.totalWithExpenses)} helper="Prestations + frais" />
+        <StatCard label="À facturer" value={`${billableCount}`} helper="Validées non facturées" />
       </div>
 
       {savedMessage && (
@@ -135,7 +141,7 @@ export default async function MissionsPage({ searchParams }: MissionsPageProps) 
               Parcours mission
             </p>
             <h2 className="mt-2 text-2xl font-black text-slate-950">
-              Mission → validation → facture
+              Brouillon → validation → facture → paiement
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
               Ajoute tes heures en brouillon, vérifie les informations, valide
@@ -154,7 +160,7 @@ export default async function MissionsPage({ searchParams }: MissionsPageProps) 
               href="/factures"
               className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5"
             >
-              Aller aux factures
+              Générer une facture
             </a>
           </div>
         </div>
@@ -198,9 +204,9 @@ export default async function MissionsPage({ searchParams }: MissionsPageProps) 
               <input className="input" name="title" defaultValue="Prestation magasin" placeholder="Titre de la mission *" required />
 
               <div className="grid gap-4 md:grid-cols-3">
-                <input className="input" name="date" type="date" required />
-                <input className="input" name="startTime" type="time" required />
-                <input className="input" name="endTime" type="time" required />
+                <input className="input" name="date" type="date" defaultValue={todayInput} required />
+                <input className="input" name="startTime" type="time" defaultValue="09:00" required />
+                <input className="input" name="endTime" type="time" defaultValue="17:00" required />
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
@@ -215,7 +221,7 @@ export default async function MissionsPage({ searchParams }: MissionsPageProps) 
               <textarea className="input min-h-28" name="notes" placeholder="Notes internes" />
 
               <button className="rounded-full bg-[var(--primary)] px-6 py-4 font-bold text-white shadow-xl transition hover:-translate-y-0.5">
-                Ajouter la mission
+                Ajouter en brouillon
               </button>
             </form>
           )}
@@ -370,16 +376,17 @@ export default async function MissionsPage({ searchParams }: MissionsPageProps) 
                         <p className="mt-1 text-xl font-black">{formatCurrency(expenseAmount)}</p>
                       </div>
                     </div>
-
                     <div className="flex flex-col gap-2">
-                      {mission.status === "DRAFT" ? (
+                      {mission.status === "DRAFT" && (
                         <form action={validateMissionAction}>
                           <input type="hidden" name="id" value={mission.id} />
                           <button className="w-full rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white">
                             Valider
                           </button>
                         </form>
-                      ) : (
+                      )}
+
+                      {mission.status === "VALIDATED" && !mission.invoiceId && (
                         <form action={draftMissionAction}>
                           <input type="hidden" name="id" value={mission.id} />
                           <button className="w-full rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">
@@ -388,12 +395,27 @@ export default async function MissionsPage({ searchParams }: MissionsPageProps) 
                         </form>
                       )}
 
-                      <form action={deleteMissionAction}>
-                        <input type="hidden" name="id" value={mission.id} />
-                        <button className="w-full rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-700">
-                          Supprimer
-                        </button>
-                      </form>
+                      {mission.status === "VALIDATED" && !mission.invoiceId && (
+                        <a
+                          href="/factures"
+                          className="w-full rounded-full bg-slate-950 px-4 py-2 text-center text-sm font-bold text-white"
+                        >
+                          Facturer
+                        </a>
+                      )}
+
+                      {mission.invoiceId ? (
+                        <div className="rounded-2xl bg-blue-50 p-3 text-sm font-bold text-blue-800">
+                          Mission verrouillée car déjà facturée.
+                        </div>
+                      ) : (
+                        <form action={deleteMissionAction}>
+                          <input type="hidden" name="id" value={mission.id} />
+                          <button className="w-full rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-700">
+                            Supprimer
+                          </button>
+                        </form>
+                      )}
                     </div>
                   </div>
 

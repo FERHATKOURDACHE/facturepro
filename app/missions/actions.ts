@@ -211,6 +211,24 @@ export async function draftMissionAction(formData: FormData) {
   const organization = await getCurrentOrganization();
   const id = requiredString(formData, "id");
 
+  const mission = await prisma.mission.findFirst({
+    where: {
+      id,
+      organizationId: organization.id,
+    },
+    select: {
+      invoiceId: true,
+    },
+  });
+
+  if (!mission) {
+    throw new Error("Mission introuvable.");
+  }
+
+  if (mission.invoiceId) {
+    throw new Error("Cette mission est déjà liée à une facture. Remise en brouillon bloquée.");
+  }
+
   await prisma.mission.update({
     where: {
       id,
