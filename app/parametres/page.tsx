@@ -1,5 +1,4 @@
-
-import { AppShell } from "@/components/AppShell";
+﻿import { AppShell } from "@/components/AppShell";
 import { getCurrentOrganization } from "@/lib/current-organization";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/require-auth";
@@ -13,6 +12,14 @@ type ParametresPageProps = {
 
 export const dynamic = "force-dynamic";
 
+function isFilled(value?: string | null) {
+  return Boolean(value?.trim());
+}
+
+function progressLabel(completed: number, total: number) {
+  return `${completed}/${total} informations obligatoires`;
+}
+
 export default async function ParametresPage({
   searchParams,
 }: ParametresPageProps) {
@@ -22,7 +29,6 @@ export default async function ParametresPage({
 
   const params = await searchParams;
   const onboardingRequired = params?.onboarding === "required";
-
 
   const profile =
     (await prisma.companyProfile.findFirst({
@@ -43,13 +49,37 @@ export default async function ParametresPage({
       },
     }));
 
+  const requiredItems = [
+    {
+      label: "Nom légal",
+      complete: isFilled(profile?.legalName ?? organization.name),
+      helper: "Nom officiel affiché sur les factures.",
+    },
+    {
+      label: "Adresse",
+      complete: isFilled(profile?.addressLine1),
+      helper: "Adresse de l'entreprise ou de l'activité.",
+    },
+    {
+      label: "Code postal",
+      complete: isFilled(profile?.postalCode),
+      helper: "Code postal de l'adresse de facturation.",
+    },
+    {
+      label: "Ville",
+      complete: isFilled(profile?.city),
+      helper: "Ville de l'adresse de facturation.",
+    },
+  ];
+
+  const completedRequiredItems = requiredItems.filter((item) => item.complete).length;
+
   return (
     <AppShell
       title="Paramètres"
-      subtitle="Informations de l’émetteur, coordonnées bancaires et préférences document."
+      subtitle="Informations de l'émetteur, coordonnées bancaires et préférences document."
     >
       <form action={updateSettingsAction} className="grid gap-6">
-
         <input
           type="hidden"
           name="redirectTo"
@@ -57,31 +87,101 @@ export default async function ParametresPage({
         />
 
         {onboardingRequired && (
-          <div className="rounded-[2rem] border border-amber-200 bg-amber-50 p-5 text-amber-900">
-            <p className="text-lg font-black">Profil entreprise requis</p>
-            <p className="mt-2 text-sm leading-6">
-              Complète les informations obligatoires de ton entreprise pour accéder au dashboard,
-              créer des clients, saisir des missions et générer tes factures.
-            </p>
-          </div>
+          <section className="rounded-[2rem] border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-6 text-amber-950 shadow-sm">
+            <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
+              <div>
+                <p className="text-sm font-black uppercase tracking-[0.25em] text-amber-700">
+                  Onboarding requis
+                </p>
+
+                <h2 className="mt-3 text-3xl font-black tracking-tight">
+                  Complète ton profil entreprise
+                </h2>
+
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-amber-900">
+                  Avant d'utiliser FacturePro, renseigne les informations
+                  obligatoires de ton entreprise. Ces données servent à générer
+                  des documents propres et à débloquer le dashboard, les clients,
+                  les missions, les factures, l'IA et l'URSSAF.
+                </p>
+
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <span className="rounded-full bg-amber-100 px-4 py-2 text-sm font-black text-amber-800">
+                    {progressLabel(completedRequiredItems, requiredItems.length)}
+                  </span>
+
+                  <span className="rounded-full bg-white px-4 py-2 text-sm font-bold text-amber-800 ring-1 ring-amber-100">
+                    Redirection vers le dashboard après enregistrement
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-3xl bg-white/85 p-5 ring-1 ring-amber-100">
+                <p className="text-sm font-black uppercase tracking-[0.2em] text-amber-700">
+                  Checklist
+                </p>
+
+                <div className="mt-4 grid gap-3">
+                  {requiredItems.map((item) => (
+                    <div
+                      key={item.label}
+                      className="rounded-2xl border border-amber-100 bg-amber-50/60 p-4"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-black text-amber-950">{item.label}</p>
+
+                        <span
+                          className={
+                            item.complete
+                              ? "rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700"
+                              : "rounded-full bg-red-50 px-3 py-1 text-xs font-black text-red-700"
+                          }
+                        >
+                          {item.complete ? "OK" : "À remplir"}
+                        </span>
+                      </div>
+
+                      <p className="mt-1 text-sm leading-6 text-amber-800">
+                        {item.helper}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
         )}
-        
+
         <input type="hidden" name="profileId" value={profile?.id ?? ""} />
 
         <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <section className="card rounded-[2rem] p-6">
-            <h2 className="text-2xl font-black">Profil émetteur</h2>
+            <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
+              <div>
+                <p className="text-sm font-bold uppercase tracking-[0.25em] text-[var(--primary)]">
+                  Étape principale
+                </p>
+                <h2 className="mt-2 text-2xl font-black">Profil émetteur</h2>
+              </div>
+
+              {onboardingRequired && (
+                <span className="w-fit rounded-full bg-red-50 px-4 py-2 text-xs font-black text-red-700">
+                  Champs obligatoires
+                </span>
+              )}
+            </div>
 
             <div className="mt-6 grid gap-4">
               <label className="grid gap-2">
                 <span className="text-sm font-bold text-[var(--muted)]">
-                  Nom légal
+                  Nom légal *
                 </span>
                 <input
                   className="input"
                   name="legalName"
                   required
                   defaultValue={profile?.legalName ?? organization.name}
+                  placeholder="Exemple : Ferhat Kourdache"
                 />
               </label>
 
@@ -93,54 +193,59 @@ export default async function ParametresPage({
                   className="input"
                   name="tradeName"
                   defaultValue={profile?.tradeName ?? ""}
+                  placeholder="Optionnel"
                 />
               </label>
 
               <label className="grid gap-2">
                 <span className="text-sm font-bold text-[var(--muted)]">
-                  Adresse
+                  Adresse *
                 </span>
                 <input
                   className="input"
                   name="addressLine1"
                   required
                   defaultValue={profile?.addressLine1 ?? ""}
+                  placeholder="Numéro et rue"
                 />
               </label>
 
               <label className="grid gap-2">
                 <span className="text-sm font-bold text-[var(--muted)]">
-                  Complément d’adresse
+                  Complément d'adresse
                 </span>
                 <input
                   className="input"
                   name="addressLine2"
                   defaultValue={profile?.addressLine2 ?? ""}
+                  placeholder="Appartement, étage, bâtiment..."
                 />
               </label>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="grid gap-2">
                   <span className="text-sm font-bold text-[var(--muted)]">
-                    Code postal
+                    Code postal *
                   </span>
                   <input
                     className="input"
                     name="postalCode"
                     required
                     defaultValue={profile?.postalCode ?? ""}
+                    placeholder="75000"
                   />
                 </label>
 
                 <label className="grid gap-2">
                   <span className="text-sm font-bold text-[var(--muted)]">
-                    Ville
+                    Ville *
                   </span>
                   <input
                     className="input"
                     name="city"
                     required
                     defaultValue={profile?.city ?? ""}
+                    placeholder="Paris"
                   />
                 </label>
               </div>
@@ -166,6 +271,7 @@ export default async function ParametresPage({
                     name="email"
                     type="email"
                     defaultValue={profile?.email ?? ""}
+                    placeholder="contact@exemple.fr"
                   />
                 </label>
 
@@ -177,6 +283,7 @@ export default async function ParametresPage({
                     className="input"
                     name="phone"
                     defaultValue={profile?.phone ?? ""}
+                    placeholder="06 00 00 00 00"
                   />
                 </label>
               </div>
@@ -196,6 +303,7 @@ export default async function ParametresPage({
                     className="input"
                     name="siren"
                     defaultValue={profile?.siren ?? ""}
+                    placeholder="9 chiffres"
                   />
                 </label>
 
@@ -207,6 +315,7 @@ export default async function ParametresPage({
                     className="input"
                     name="siret"
                     defaultValue={profile?.siret ?? ""}
+                    placeholder="14 chiffres"
                   />
                 </label>
               </div>
@@ -220,6 +329,7 @@ export default async function ParametresPage({
                     className="input"
                     name="ape"
                     defaultValue={profile?.ape ?? ""}
+                    placeholder="Exemple : 6201Z"
                   />
                 </label>
 
@@ -231,6 +341,7 @@ export default async function ParametresPage({
                     className="input"
                     name="vatNumber"
                     defaultValue={profile?.vatNumber ?? ""}
+                    placeholder="Optionnel"
                   />
                 </label>
               </div>
@@ -280,6 +391,7 @@ export default async function ParametresPage({
                   className="input"
                   name="iban"
                   defaultValue={profile?.iban ?? ""}
+                  placeholder="FR76..."
                 />
               </label>
 
@@ -291,6 +403,7 @@ export default async function ParametresPage({
                   className="input"
                   name="bic"
                   defaultValue={profile?.bic ?? ""}
+                  placeholder="Optionnel"
                 />
               </label>
             </div>
@@ -353,13 +466,27 @@ export default async function ParametresPage({
           </section>
         </div>
 
-        <div className="flex justify-end">
-          <button className="rounded-full bg-[var(--primary)] px-8 py-4 font-bold text-white">
-            Enregistrer les paramètres
-          </button>
+        <div className="sticky bottom-4 z-10 rounded-[2rem] border border-slate-200 bg-white/90 p-4 shadow-2xl backdrop-blur-xl">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="font-black text-slate-950">
+                {onboardingRequired
+                  ? "Enregistre ton profil pour débloquer FacturePro"
+                  : "Enregistrer les paramètres"}
+              </p>
+              <p className="mt-1 text-sm text-slate-600">
+                Les champs marqués avec * sont obligatoires pour accéder aux pages métier.
+              </p>
+            </div>
+
+            <button className="rounded-full bg-[var(--primary)] px-8 py-4 font-bold text-white shadow-xl transition hover:-translate-y-0.5">
+              {onboardingRequired
+                ? "Enregistrer et accéder au dashboard"
+                : "Enregistrer les paramètres"}
+            </button>
+          </div>
         </div>
       </form>
     </AppShell>
   );
 }
-
