@@ -1,10 +1,15 @@
 ﻿import Link from "next/link";
-import { siteConfig } from "@/lib/site-config";
+
+import {
+  siteConfig as defaultSiteConfig,
+  type SiteConfig,
+} from "@/lib/site-config";
 
 type PublicPageShellProps = {
   eyebrow?: string;
   title: string;
   subtitle?: string;
+  siteConfig?: SiteConfig;
   children: React.ReactNode;
 };
 
@@ -12,14 +17,17 @@ export function PublicPageShell({
   eyebrow,
   title,
   subtitle,
+  siteConfig,
   children,
 }: PublicPageShellProps) {
+  const currentSiteConfig = siteConfig ?? defaultSiteConfig;
+
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
       <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
           <Link href="/" className="text-lg font-black tracking-tight">
-            {siteConfig.name}
+            {currentSiteConfig.name}
           </Link>
 
           <nav className="hidden items-center gap-6 text-sm font-bold text-slate-600 md:flex">
@@ -67,7 +75,7 @@ export function PublicPageShell({
       <footer className="border-t border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-8 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
           <p>
-            © {new Date().getFullYear()} {siteConfig.name}. Tous droits réservés.
+            © {new Date().getFullYear()} {currentSiteConfig.name}. Tous droits réservés.
           </p>
 
           <div className="flex flex-wrap gap-4">

@@ -1,7 +1,9 @@
 ﻿import type { Metadata } from "next";
 
-import { pricingContent } from "@/lib/pricing-content";
+import { getPublicContent } from "@/lib/public-content";
 import { PublicPageShell } from "@/components/marketing/PublicPageShell";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Tarifs - FacturePro",
@@ -9,12 +11,15 @@ export const metadata: Metadata = {
     "Découvrez les offres FacturePro pour gérer clients, missions, factures, paiements, exports, URSSAF et assistant IA.",
 };
 
-export default function TarifsPage() {
+export default async function TarifsPage() {
+  const { pricingContent, siteConfig } = await getPublicContent();
+
   return (
     <PublicPageShell
       eyebrow={pricingContent.eyebrow}
       title={pricingContent.title}
       subtitle={pricingContent.subtitle}
+      siteConfig={siteConfig}
     >
       <div className="grid gap-6 lg:grid-cols-3">
         {pricingContent.plans.map((plan) => (

@@ -1,4 +1,8 @@
-﻿import { PublicPageShell } from "@/components/marketing/PublicPageShell";
+﻿import {
+  siteConfig as defaultSiteConfig,
+  type SiteConfig,
+} from "@/lib/site-config";
+import { PublicPageShell } from "@/components/marketing/PublicPageShell";
 
 type LegalContent = {
   title: string;
@@ -15,14 +19,20 @@ type LegalContent = {
 type LegalContentPageProps = {
   eyebrow: string;
   content: LegalContent;
+  siteConfig?: SiteConfig;
 };
 
-export function LegalContentPage({ eyebrow, content }: LegalContentPageProps) {
+export function LegalContentPage({
+  eyebrow,
+  content,
+  siteConfig,
+}: LegalContentPageProps) {
   return (
     <PublicPageShell
       eyebrow={eyebrow}
       title={content.title}
       subtitle={content.subtitle}
+      siteConfig={siteConfig ?? defaultSiteConfig}
     >
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <article className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
@@ -81,7 +91,7 @@ export function LegalContentPage({ eyebrow, content }: LegalContentPageProps) {
 
             <div>
               <p className="font-black text-slate-950">Statut</p>
-              <p>Base prête à personnaliser avant lancement commercial.</p>
+              <p>Contenu dynamique avec fallback sécurisé.</p>
             </div>
 
             <div>

@@ -1,7 +1,9 @@
 ﻿import type { Metadata } from "next";
 
-import { siteConfig } from "@/lib/site-config";
+import { getPublicContent } from "@/lib/public-content";
 import { PublicPageShell } from "@/components/marketing/PublicPageShell";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Support - FacturePro",
@@ -9,7 +11,9 @@ export const metadata: Metadata = {
     "Contactez le support FacturePro pour une question produit, commerciale, RGPD ou technique.",
 };
 
-export default function SupportPage() {
+export default async function SupportPage() {
+  const { siteConfig } = await getPublicContent();
+
   const contacts = [
     {
       title: "Support utilisateur",
@@ -34,8 +38,9 @@ export default function SupportPage() {
   return (
     <PublicPageShell
       eyebrow="Support"
-      title="Une question ? Contacte l’équipe FacturePro."
-      subtitle="Les contacts sont centralisés dans la configuration du site pour être modifiés facilement."
+      title={`Une question ? Contacte l’équipe ${siteConfig.name}.`}
+      subtitle="Les contacts sont lus depuis le contenu public dynamique avec fallback sécurisé."
+      siteConfig={siteConfig}
     >
       <div className="grid gap-5 lg:grid-cols-3">
         {contacts.map((contact) => (

@@ -1,5 +1,5 @@
-﻿import Link from "next/link";
-import { siteConfig } from "@/lib/site-config";
+import Link from "next/link";
+import { siteConfig as defaultSiteConfig, type SiteConfig } from "@/lib/site-config";
 import {
   ArrowRight,
   BadgeCheck,
@@ -75,7 +75,11 @@ const proofCards = [
   ["URSSAF", "CA encaissé lisible"],
 ];
 
-export function Landing() {
+type LandingProps = {
+  siteConfig?: SiteConfig;
+};
+
+export function Landing({ siteConfig = defaultSiteConfig }: LandingProps) {
   return (
     <main className="min-h-screen">
       <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
@@ -446,4 +450,3 @@ export function Landing() {
       </footer></main>
   );
 }
-
