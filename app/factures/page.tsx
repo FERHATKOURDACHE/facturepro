@@ -17,6 +17,12 @@ import {
 
 export const dynamic = "force-dynamic";
 
+type FacturesPageProps = {
+  searchParams?: Promise<{
+    saved?: string;
+  }>;
+};
+
 function formatDate(date: Date | null) {
   if (!date) return "-";
 
@@ -26,6 +32,37 @@ function formatDate(date: Date | null) {
     month: "2-digit",
     year: "numeric",
   }).format(date);
+}
+
+function getSavedMessage(saved?: string) {
+  const messages: Record<string, { title: string; message: string }> = {
+    created: {
+      title: "Facture générée",
+      message: "La facture a bien été créée depuis les missions validées.",
+    },
+    payment: {
+      title: "Paiement enregistré",
+      message: "Le paiement a bien été ajouté. Le suivi URSSAF tiendra compte de la date d'encaissement.",
+    },
+    sent: {
+      title: "Facture marquée envoyée",
+      message: "Le statut de la facture a bien été mis à jour.",
+    },
+    overdue: {
+      title: "Facture marquée en retard",
+      message: "La facture est maintenant signalée comme en retard.",
+    },
+    status_updated: {
+      title: "Statut mis à jour",
+      message: "Le statut de la facture a bien été enregistré.",
+    },
+    cancelled: {
+      title: "Facture annulée",
+      message: "La facture a été annulée et les missions associées ont été libérées.",
+    },
+  };
+
+  return saved ? messages[saved] ?? null : null;
 }
 
 function statusBadge(status: string) {
@@ -68,9 +105,12 @@ function paymentMethodLabel(method: string) {
   return labels[method] ?? method;
 }
 
-export default async function FacturesPage() {
+export default async function FacturesPage({ searchParams }: FacturesPageProps) {
   await requireUser();
   await requireCompanyProfileCompleted();
+    const params = await searchParams;
+  const savedMessage = getSavedMessage(params?.saved);
+
   const { clients, profiles, invoices, stats } = await getInvoicePageData();
 
   const defaultClient = clients[0];
@@ -89,6 +129,53 @@ export default async function FacturesPage() {
         <StatCard label="En attente" value={formatCurrency(stats.totalOpen)} />
         <StatCard label="Payé" value={formatCurrency(stats.totalPaid)} />
       </div>
+
+      {savedMessage && (
+        <section className="mt-6 rounded-[2rem] border border-emerald-200 bg-emerald-50 p-5 text-emerald-900">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-lg font-black">{savedMessage.title}</p>
+              <p className="mt-1 text-sm leading-6">{savedMessage.message}</p>
+            </div>
+
+            <span className="w-fit rounded-full bg-white px-4 py-2 text-sm font-black text-emerald-700 ring-1 ring-emerald-100">
+              Sauvegarde OK
+            </span>
+          </div>
+        </section>
+      )}
+
+      <section className="mt-6 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.25em] text-[var(--primary)]">
+              Parcours facture
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-slate-950">
+              Missions validées → facture → paiement
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+              Valide tes missions, génère une facture, exporte le PDF ou Excel,
+              puis enregistre les paiements encaissés pour le suivi URSSAF.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <a
+              href="/missions"
+              className="rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-black text-slate-800 transition hover:bg-white"
+            >
+              Aller aux missions
+            </a>
+            <a
+              href="/urssaf"
+              className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5"
+            >
+              Voir l'URSSAF
+            </a>
+          </div>
+        </div>
+      </section>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
         <section className="card rounded-[2rem] p-6">

@@ -2,6 +2,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { InvoiceStatus, PaymentMethod } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
@@ -336,6 +337,8 @@ await prisma.$transaction(async (tx) => {
 revalidatePath("/factures");
 revalidatePath("/missions");
 revalidatePath("/dashboard");
+
+redirect("/factures?saved=created");
 }
 
 export async function updateInvoiceStatusAction(formData: FormData) {
@@ -355,6 +358,15 @@ export async function updateInvoiceStatusAction(formData: FormData) {
 
   revalidatePath("/factures");
   revalidatePath("/dashboard");
+
+  const statusSaved =
+    status === "SENT"
+      ? "sent"
+      : status === "OVERDUE"
+        ? "overdue"
+        : "status_updated";
+
+  redirect(`/factures?saved=${statusSaved}`);
 }
 
 export async function registerInvoicePaymentAction(formData: FormData) {
@@ -443,6 +455,8 @@ export async function registerInvoicePaymentAction(formData: FormData) {
   revalidatePath("/factures");
   revalidatePath("/dashboard");
   revalidatePath("/urssaf");
+
+  redirect("/factures?saved=payment");
 }
 
 export async function cancelInvoiceAction(formData: FormData) {
@@ -505,5 +519,7 @@ export async function cancelInvoiceAction(formData: FormData) {
   revalidatePath("/factures");
   revalidatePath("/missions");
   revalidatePath("/dashboard");
+
+  redirect("/factures?saved=cancelled");
 }
 
