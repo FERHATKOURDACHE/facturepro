@@ -4,7 +4,9 @@ import { AppShell } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
 import { getUrssafTurnover } from "@/lib/urssaf-queries";
 import {
-  estimateUrssaf,
+  estimateUrssafPro,
+  isDateInAcrePeriod,
+  URSSAF_OFFICIAL_PORTAL_URL,
   URSSAF_RATES_2026,
   type UrssafActivityCode,
 } from "@/lib/urssaf-rates";
@@ -20,6 +22,28 @@ function formatDate(value: Date) {
   return value.toISOString().slice(0, 10);
 }
 
+function dateInputToUtc(value: string | null, endOfDay = false) {
+  if (!value) return null;
+  return new Date(`${value}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}Z`);
+}
+
+function declarationFrequencyLabel(value: string) {
+  if (value === "QUARTERLY") return "Trimestrielle";
+  return "Mensuelle";
+}
+
+function paymentMethodLabel(method: string) {
+  const labels: Record<string, string> = {
+    BANK_TRANSFER: "Virement",
+    CARD: "Carte bancaire",
+    CASH: "Espèces",
+    CHECK: "Chèque",
+    OTHER: "Autre",
+  };
+
+  return labels[method] ?? method;
+}
+
 export default async function UrssafPage({
   searchParams,
 }: {
@@ -29,46 +53,69 @@ export default async function UrssafPage({
   await requireCompanyProfileCompleted();
 
   const params = (await searchParams) ?? {};
+  const today = new Date();
+
   const activity = (firstValue(params.activity) ?? "SERVICE_BNC") as UrssafActivityCode;
+  const declarationFrequency = firstValue(params.declarationFrequency) ?? "MONTHLY";
+
   const start =
     firstValue(params.start) ??
-    new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+    new Date(today.getFullYear(), today.getMonth(), 1)
       .toISOString()
       .slice(0, 10);
+
   const end =
     firstValue(params.end) ??
-    new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
+    new Date(today.getFullYear(), today.getMonth() + 1, 0)
       .toISOString()
       .slice(0, 10);
-  const includeCfp = firstValue(params.cfp) === "on";
 
-  const { invoices, turnover, invoiceCount, paymentCount } =
+  const includeCfp = firstValue(params.cfp) === "on";
+  const includeAcre = firstValue(params.acre) === "on";
+  const acreStart = firstValue(params.acreStart) ?? start;
+  const acreEnd = firstValue(params.acreEnd) ?? end;
+
+  const acreStartDate = includeAcre ? dateInputToUtc(acreStart) : null;
+  const acreEndDate = includeAcre ? dateInputToUtc(acreEnd, true) : null;
+
+  const { invoices, payments, invoiceCount, paymentCount } =
     await getUrssafTurnover({
       periodStart: new Date(`${start}T00:00:00.000Z`),
       periodEnd: new Date(`${end}T23:59:59.999Z`),
     });
 
-  const estimate = estimateUrssaf({
-    turnover,
+  const estimate = estimateUrssafPro({
+    payments: payments.map((payment) => ({
+      amount: Number(payment.amount),
+      paidAt: payment.paidAt,
+    })),
     activity,
     includeCfp,
+    includeAcre,
+    acreStart: acreStartDate,
+    acreEnd: acreEndDate,
   });
 
   return (
     <AppShell
-      title="URSSAF"
-      subtitle="Estimation des cotisations à partir du chiffre d'affaires encaissé."
+      title="URSSAF Pro"
+      subtitle="Estimation professionnelle des cotisations à partir du chiffre d'affaires encaissé."
     >
-      <div className="grid gap-5 md:grid-cols-4">
+      <div className="grid gap-5 md:grid-cols-5">
         <StatCard
           label="CA encaissé"
           value={formatCurrency(estimate.turnover)}
           helper={`${paymentCount} paiement${paymentCount > 1 ? "s" : ""} · ${invoiceCount} facture${invoiceCount > 1 ? "s" : ""}`}
         />
         <StatCard
+          label="CA ACRE"
+          value={formatCurrency(estimate.acreTurnover)}
+          helper={includeAcre ? "Période ACRE activée" : "ACRE désactivée"}
+        />
+        <StatCard
           label="Cotisations"
           value={formatCurrency(estimate.socialContributionAmount)}
-          helper={`${(estimate.socialContributionRate * 100).toFixed(2)} %`}
+          helper={`${(estimate.socialContributionRate * 100).toFixed(2)} % normal`}
         />
         <StatCard
           label="CFP"
@@ -76,37 +123,105 @@ export default async function UrssafPage({
           helper={includeCfp ? `${(estimate.cfpRate * 100).toFixed(2)} %` : "Non incluse"}
         />
         <StatCard
-          label="Net estimé"
-          value={formatCurrency(estimate.netBeforeIncomeTax)}
-          helper="Avant impôt sur le revenu"
+          label="Total estimé"
+          value={formatCurrency(estimate.totalEstimatedAmount)}
+          helper={`Net estimé : ${formatCurrency(estimate.netBeforeIncomeTax)}`}
         />
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
         <section className="card rounded-[2rem] p-6">
           <p className="text-sm font-bold uppercase tracking-[0.25em] text-[var(--primary)]">
-            Paramètres
+            Paramètres URSSAF
           </p>
-          <h2 className="mt-2 text-2xl font-black">Calculer une période encaissée</h2>
+          <h2 className="mt-2 text-2xl font-black">Calculer une déclaration</h2>
 
           <form className="mt-6 grid gap-4">
+            <label className="grid gap-2">
+              <span className="text-sm font-bold text-slate-600">
+                Type de déclaration
+              </span>
+              <select
+                className="input"
+                name="declarationFrequency"
+                defaultValue={declarationFrequency}
+              >
+                <option value="MONTHLY">Mensuelle</option>
+                <option value="QUARTERLY">Trimestrielle</option>
+              </select>
+            </label>
+
             <div className="grid gap-4 md:grid-cols-2">
-              <input className="input" name="start" type="date" defaultValue={start} />
-              <input className="input" name="end" type="date" defaultValue={end} />
+              <label className="grid gap-2">
+                <span className="text-sm font-bold text-slate-600">
+                  Début de période
+                </span>
+                <input className="input" name="start" type="date" defaultValue={start} />
+              </label>
+
+              <label className="grid gap-2">
+                <span className="text-sm font-bold text-slate-600">
+                  Fin de période
+                </span>
+                <input className="input" name="end" type="date" defaultValue={end} />
+              </label>
             </div>
 
-            <select className="input" name="activity" defaultValue={activity}>
-              {URSSAF_RATES_2026.map((rate) => (
-                <option key={rate.code} value={rate.code}>
-                  {rate.label} - {(rate.socialContributionRate * 100).toFixed(2)} %
-                </option>
-              ))}
-            </select>
+            <label className="grid gap-2">
+              <span className="text-sm font-bold text-slate-600">
+                Activité
+              </span>
+              <select className="input" name="activity" defaultValue={activity}>
+                {URSSAF_RATES_2026.map((rate) => (
+                  <option key={rate.code} value={rate.code}>
+                    {rate.label} - {(rate.socialContributionRate * 100).toFixed(2)} %
+                  </option>
+                ))}
+              </select>
+            </label>
 
             <label className="flex items-center gap-3 rounded-2xl bg-white/80 p-4 font-semibold">
               <input name="cfp" type="checkbox" defaultChecked={includeCfp} />
               Inclure la CFP dans l'estimation
             </label>
+
+            <div className="rounded-3xl border border-emerald-100 bg-emerald-50 p-4">
+              <label className="flex items-center gap-3 font-black text-emerald-950">
+                <input name="acre" type="checkbox" defaultChecked={includeAcre} />
+                ACRE activée
+              </label>
+
+              <p className="mt-2 text-sm leading-6 text-emerald-800">
+                Si l'utilisateur bénéficie de l'ACRE, les paiements encaissés dans la période ACRE sont calculés avec un taux minoré.
+              </p>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <label className="grid gap-2">
+                  <span className="text-sm font-bold text-emerald-900">
+                    Début ACRE
+                  </span>
+                  <input className="input bg-white" name="acreStart" type="date" defaultValue={acreStart} />
+                </label>
+
+                <label className="grid gap-2">
+                  <span className="text-sm font-bold text-emerald-900">
+                    Fin ACRE
+                  </span>
+                  <input className="input bg-white" name="acreEnd" type="date" defaultValue={acreEnd} />
+                </label>
+              </div>
+
+              <div className="mt-4 rounded-2xl bg-white/80 p-4 text-sm leading-6 text-emerald-900">
+                <p>
+                  Taux ACRE indicatif avant juillet 2026 :{" "}
+                  <strong>{(estimate.acreRateBeforeJuly2026 * 100).toFixed(2)} %</strong>
+                </p>
+                <p>
+                  Taux ACRE indicatif à partir de juillet 2026 :{" "}
+                  <strong>{(estimate.acreRateFromJuly2026 * 100).toFixed(2)} %</strong>
+                </p>
+              </div>
+            </div>
 
             <button className="rounded-full bg-[var(--primary)] px-6 py-4 font-bold text-white">
               Recalculer
@@ -116,61 +231,103 @@ export default async function UrssafPage({
 
         <section className="card rounded-[2rem] p-6">
           <p className="text-sm font-bold uppercase tracking-[0.25em] text-[var(--primary)]">
-            Détail
+            Synthèse
           </p>
-          <h2 className="mt-2 text-2xl font-black">Paiements pris en compte</h2>
+          <h2 className="mt-2 text-2xl font-black">Déclaration estimée</h2>
 
-          {invoices.length === 0 ? (
-            <div className="mt-6 rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center">
-              <p className="text-sm font-bold uppercase tracking-[0.25em] text-[var(--primary)]">
-                Estimation URSSAF
-              </p>
-              <p className="mt-3 text-xl font-black text-slate-950">
-                Aucun paiement encaissé sur cette période
-              </p>
-              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600">
-                Les cotisations sont estimées à partir des paiements réellement enregistrés sur les factures.
-              </p>
-              <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-left text-sm leading-6 text-slate-600">
-                <p className="font-bold text-slate-900">Pour obtenir une estimation :</p>
-                <p>Crée une facture, enregistre un paiement, puis sélectionne la période d'encaissement correspondante.</p>
-              </div>
-              <a
-                href="/factures"
-                className="mt-5 inline-flex rounded-full bg-slate-950 px-5 py-3 text-sm font-bold text-white"
-              >
-                Aller aux factures
-              </a>
-            </div>
-          ) : (
-            <div className="table-wrap mt-6">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Facture</th>
-                    <th>Client</th>
-                    <th>Date paiement</th>
-                    <th>Statut facture</th>
-                    <th>Encaissé</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoices.map((invoice) => (
-                    <tr key={`${invoice.id}-${invoice.paidAt.toISOString()}`}>
-                      <td className="font-black">{invoice.number}</td>
-                      <td>{invoice.clientName}</td>
-                      <td>{formatDate(invoice.paidAt)}</td>
-                      <td>{invoice.status}</td>
-                      <td className="font-black">{formatCurrency(invoice.paidAmount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <div className="mt-6 grid gap-3 rounded-3xl bg-slate-50 p-5 text-sm leading-6 text-slate-700">
+            <p>
+              <strong>Mode :</strong> {declarationFrequencyLabel(declarationFrequency)}
+            </p>
+            <p>
+              <strong>Activité :</strong> {estimate.activityLabel}
+            </p>
+            <p>
+              <strong>CA encaissé :</strong> {formatCurrency(estimate.turnover)}
+            </p>
+            <p>
+              <strong>CA au taux normal :</strong> {formatCurrency(estimate.standardTurnover)}
+            </p>
+            <p>
+              <strong>CA en période ACRE :</strong> {formatCurrency(estimate.acreTurnover)}
+            </p>
+            <p>
+              <strong>Cotisations sociales estimées :</strong>{" "}
+              {formatCurrency(estimate.socialContributionAmount)}
+            </p>
+            <p>
+              <strong>CFP :</strong> {formatCurrency(estimate.cfpAmount)}
+            </p>
+            <p className="text-lg font-black text-slate-950">
+              Total estimé à payer : {formatCurrency(estimate.totalEstimatedAmount)}
+            </p>
+          </div>
+
+          <a
+            href={URSSAF_OFFICIAL_PORTAL_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-5 inline-flex rounded-full bg-slate-950 px-5 py-3 text-sm font-bold text-white"
+          >
+            Déclarer / payer sur l'URSSAF
+          </a>
 
           <div className="mt-6 rounded-3xl bg-amber-50 p-5 text-sm leading-6 text-amber-900">
-            Cette estimation ne remplace pas la déclaration officielle. Le chiffre d'affaires à déclarer correspond aux encaissements bruts, sans déduction des frais. Les taux doivent rester vérifiables selon l'activité, l'année, l'ACRE, la CFP et les options fiscales.
+            Cette estimation ne remplace pas la déclaration officielle. Le chiffre d'affaires à déclarer correspond aux encaissements bruts, sans déduction des frais. Les taux doivent être vérifiés sur le portail URSSAF selon l'activité, l'année, l'ACRE, la CFP et les options fiscales.
+          </div>
+
+          <div className="mt-8">
+            <p className="text-sm font-bold uppercase tracking-[0.25em] text-[var(--primary)]">
+              Détail
+            </p>
+            <h3 className="mt-2 text-xl font-black">Paiements pris en compte</h3>
+
+            {invoices.length === 0 ? (
+              <div className="mt-6 rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center">
+                <p className="text-xl font-black text-slate-950">
+                  Aucun paiement encaissé sur cette période
+                </p>
+                <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600">
+                  Crée une facture, enregistre un paiement, puis sélectionne la période d'encaissement correspondante.
+                </p>
+              </div>
+            ) : (
+              <div className="table-wrap mt-6">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Facture</th>
+                      <th>Client</th>
+                      <th>Date paiement</th>
+                      <th>Méthode</th>
+                      <th>Régime</th>
+                      <th>Encaissé</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoices.map((invoice) => {
+                      const isAcre = isDateInAcrePeriod({
+                        paidAt: invoice.paidAt,
+                        includeAcre,
+                        acreStart: acreStartDate,
+                        acreEnd: acreEndDate,
+                      });
+
+                      return (
+                        <tr key={invoice.paymentId}>
+                          <td className="font-black">{invoice.number}</td>
+                          <td>{invoice.clientName}</td>
+                          <td>{formatDate(invoice.paidAt)}</td>
+                          <td>{paymentMethodLabel(invoice.paymentMethod)}</td>
+                          <td>{isAcre ? "ACRE" : "Normal"}</td>
+                          <td className="font-black">{formatCurrency(invoice.paidAmount)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </section>
       </div>

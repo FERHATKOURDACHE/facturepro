@@ -41,6 +41,7 @@ export async function getUrssafTurnover(params: {
   const invoiceIds = new Set(payments.map((payment) => payment.invoiceId));
 
   const invoices = payments.map((payment) => ({
+    paymentId: payment.id,
     id: payment.invoice.id,
     number: payment.invoice.number,
     issueDate: payment.invoice.issueDate,
@@ -49,6 +50,7 @@ export async function getUrssafTurnover(params: {
     clientName: payment.invoice.client.legalName,
     paidAt: payment.paidAt,
     paidAmount: Number(payment.amount),
+    paymentMethod: payment.method,
     paymentReference: payment.reference,
   }));
 
