@@ -1,12 +1,23 @@
 ﻿import OpenAI from "openai";
+
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
 import {
   ExtractedTimesheetSchema,
   fallbackTimesheetExtraction,
+  type ExtractedTimesheet,
 } from "@/lib/ai/timesheet-parser";
 
 export const runtime = "nodejs";
 
 const DEFAULT_OPENAI_MODEL = "gpt-5.5-mini";
+const MAX_TEXT_LENGTH = 12000;
+const MAX_EXTRACTED_MISSIONS = 50;
+
+type ApiContext = {
+  organizationId: string;
+  userId: string;
+};
 
 function isInvalidEnvValue(value: string | undefined) {
   if (!value) return true;
@@ -43,19 +54,36 @@ function getOpenAiModel() {
     return DEFAULT_OPENAI_MODEL;
   }
 
-  return model;
+  return model ?? DEFAULT_OPENAI_MODEL;
 }
 
-function runLocalFallback(
-  text: string,
-  mode = "local_fallback",
-  warning?: string
-) {
-  return Response.json({
-    mode,
-    ...(warning ? { warning } : {}),
-    data: fallbackTimesheetExtraction(text),
+async function getApiContext(): Promise<ApiContext | null> {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return null;
+  }
+
+  const membership = await prisma.membership.findFirst({
+    where: {
+      userId: session.user.id,
+    },
+    select: {
+      organizationId: true,
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
   });
+
+  if (!membership) {
+    return null;
+  }
+
+  return {
+    organizationId: membership.organizationId,
+    userId: session.user.id,
+  };
 }
 
 function cleanJsonOutput(raw: string) {
@@ -67,26 +95,142 @@ function cleanJsonOutput(raw: string) {
     .trim();
 }
 
+function timeToMinutes(time: string) {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function calculateEstimatedHours(missions: ExtractedTimesheet["missions"]) {
+  const total = missions.reduce((sum, mission) => {
+    const start = timeToMinutes(mission.startTime);
+    const end = timeToMinutes(mission.endTime);
+    const duration = end >= start ? end - start : end + 24 * 60 - start;
+
+    return sum + Math.max(0, duration) / 60;
+  }, 0);
+
+  return Math.round(total * 100) / 100;
+}
+
+function limitExtractedTimesheet(data: ExtractedTimesheet): ExtractedTimesheet {
+  if (data.missions.length <= MAX_EXTRACTED_MISSIONS) {
+    return data;
+  }
+
+  const missions = data.missions.slice(0, MAX_EXTRACTED_MISSIONS);
+
+  return {
+    ...data,
+    missions,
+    summary: {
+      totalEstimatedHours: calculateEstimatedHours(missions),
+      warnings: [
+        ...data.summary.warnings,
+        `Extraction limitée à ${MAX_EXTRACTED_MISSIONS} missions pour protéger l'application.`,
+      ],
+    },
+  };
+}
+
+async function logAiExtraction(
+  context: ApiContext,
+  params: {
+    mode: string;
+    model: string | null;
+    textLength: number;
+    missionCount: number;
+    warning?: string;
+  }
+) {
+  await prisma.aiGeneration
+    .create({
+      data: {
+        organizationId: context.organizationId,
+        userId: context.userId,
+        type: "TIMESHEET_EXTRACTION",
+        prompt: "Extraction sécurisée de feuille de temps",
+        response: params.warning ?? null,
+        inputJson: {
+          mode: params.mode,
+          textLength: params.textLength,
+        },
+        outputJson: {
+          missionCount: params.missionCount,
+          warning: params.warning ?? null,
+        },
+        model: params.model,
+      },
+    })
+    .catch((error) => {
+      console.error("[AI_GENERATION_LOG_ERROR]", error);
+    });
+}
+
+async function runLocalFallback(
+  text: string,
+  context: ApiContext,
+  mode = "local_fallback",
+  warning?: string
+) {
+  const data = limitExtractedTimesheet(fallbackTimesheetExtraction(text));
+
+  await logAiExtraction(context, {
+    mode,
+    model: null,
+    textLength: text.length,
+    missionCount: data.missions.length,
+    warning,
+  });
+
+  return Response.json({
+    mode,
+    ...(warning ? { warning } : {}),
+    data,
+  });
+}
+
 export async function POST(request: Request) {
+  const context = await getApiContext();
+
+  if (!context) {
+    return Response.json(
+      { error: "Authentification requise pour utiliser l'assistant IA." },
+      { status: 401 }
+    );
+  }
+
   const body = await request.json().catch(() => null);
 
   if (!body || typeof body.text !== "string" || body.text.trim().length < 5) {
     return Response.json(
-      { error: "Texte insuffisant pour l’extraction." },
+      { error: "Texte insuffisant pour l'extraction." },
       { status: 400 }
     );
   }
 
   const text = body.text.trim();
+
+  if (text.length > MAX_TEXT_LENGTH) {
+    return Response.json(
+      {
+        error: `Texte trop long. Limite autorisée : ${MAX_TEXT_LENGTH} caractères.`,
+      },
+      { status: 413 }
+    );
+  }
+
   const apiKey = getOpenAiApiKey();
 
   if (!apiKey) {
     return runLocalFallback(
       text,
+      context,
       "local_fallback",
-      "L’assistant IA en ligne n’est pas configuré. Une extraction locale a été utilisée."
+      "L'assistant IA en ligne n'est pas configuré. Une extraction locale a été utilisée."
     );
   }
+
+  const model = getOpenAiModel();
 
   try {
     const openai = new OpenAI({
@@ -94,7 +238,7 @@ export async function POST(request: Request) {
     });
 
     const response = await openai.responses.create({
-      model: getOpenAiModel(),
+      model,
       input: [
         {
           role: "system",
@@ -140,13 +284,23 @@ ${text}
     if (!raw) {
       return runLocalFallback(
         text,
+        context,
         "local_fallback",
-        "L’assistant IA n’a pas retourné de réponse exploitable. Une extraction locale a été utilisée."
+        "L'assistant IA n'a pas retourné de réponse exploitable. Une extraction locale a été utilisée."
       );
     }
 
     const parsed = JSON.parse(cleanJsonOutput(raw));
-    const validated = ExtractedTimesheetSchema.parse(parsed);
+    const validated = limitExtractedTimesheet(
+      ExtractedTimesheetSchema.parse(parsed)
+    );
+
+    await logAiExtraction(context, {
+      mode: "openai",
+      model,
+      textLength: text.length,
+      missionCount: validated.missions.length,
+    });
 
     return Response.json({
       mode: "openai",
@@ -157,9 +311,9 @@ ${text}
 
     return runLocalFallback(
       text,
+      context,
       "local_fallback",
-      "L’assistant IA en ligne est momentanément indisponible. Une extraction locale a été utilisée."
+      "L'assistant IA en ligne est momentanément indisponible. Une extraction locale a été utilisée."
     );
   }
 }
-

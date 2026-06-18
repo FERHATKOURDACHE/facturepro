@@ -12,17 +12,24 @@ import {
   toDecimal,
 } from "@/lib/mission-calculations";
 
+const MAX_IMPORTED_MISSIONS = 50;
+const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 const AiMissionImportSchema = z.object({
-  date: z.string().min(1),
-  startTime: z.string().min(1),
-  endTime: z.string().min(1),
-  locationName: z.string().nullable(),
-  hourlyRate: z.number().nullable(),
-  fuelAmount: z.number().nullable(),
-  notes: z.string().nullable(),
+  date: z.string().regex(ISO_DATE_REGEX),
+  startTime: z.string().regex(TIME_REGEX),
+  endTime: z.string().regex(TIME_REGEX),
+  locationName: z.string().max(120).nullable(),
+  hourlyRate: z.number().min(0).max(10000).nullable(),
+  fuelAmount: z.number().min(0).max(10000).nullable(),
+  notes: z.string().max(500).nullable(),
 });
 
-const AiImportPayloadSchema = z.array(AiMissionImportSchema);
+const AiImportPayloadSchema = z
+  .array(AiMissionImportSchema)
+  .min(1)
+  .max(MAX_IMPORTED_MISSIONS);
 
 function requiredString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -32,6 +39,26 @@ function requiredString(formData: FormData, key: string) {
   }
 
   return value.trim();
+}
+
+function parseAiMissionsPayload(raw: string) {
+  try {
+    return AiImportPayloadSchema.parse(JSON.parse(raw));
+  } catch {
+    throw new Error(
+      `Données IA invalides ou trop volumineuses. Limite : ${MAX_IMPORTED_MISSIONS} missions.`
+    );
+  }
+}
+
+function parseMissionDate(date: string) {
+  const parsed = new Date(`${date}T00:00:00.000Z`);
+
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error(`Date de mission invalide : ${date}`);
+  }
+
+  return parsed;
 }
 
 async function assertClientBelongsToOrganization(
@@ -60,15 +87,15 @@ export async function importAiMissionsAction(formData: FormData) {
 
   await assertClientBelongsToOrganization(clientId, organization.id);
 
-  const missions = AiImportPayloadSchema.parse(JSON.parse(missionsJson));
-
-  if (missions.length === 0) {
-    throw new Error("Aucune mission à importer.");
-  }
+  const missions = parseAiMissionsPayload(missionsJson);
 
   await prisma.$transaction(async (tx) => {
+    let importedCount = 0;
+    let expenseCount = 0;
+
     for (const mission of missions) {
       const hourlyRate = mission.hourlyRate ?? 13;
+      const missionDate = parseMissionDate(mission.date);
 
       const quantityHours = calculateHours({
         startTime: mission.startTime,
@@ -76,25 +103,35 @@ export async function importAiMissionsAction(formData: FormData) {
         breakMinutes: 0,
       });
 
+      if (quantityHours <= 0 || quantityHours > 24) {
+        throw new Error(
+          `Durée invalide pour la mission du ${mission.date}.`
+        );
+      }
+
+      const locationName = mission.locationName?.trim() || null;
+
       const createdMission = await tx.mission.create({
         data: {
           organizationId: organization.id,
           clientId,
-          date: new Date(`${mission.date}T00:00:00.000Z`),
+          date: missionDate,
           startTime: dateAndTimeToUtcDate(mission.date, mission.startTime),
           endTime: dateAndTimeToUtcDate(mission.date, mission.endTime),
           breakMinutes: 0,
-          title: mission.locationName
-            ? `Mission - ${mission.locationName}`
+          title: locationName
+            ? `Mission - ${locationName}`
             : "Mission importée par IA",
-          locationName: mission.locationName,
+          locationName,
           address: null,
           hourlyRate: toDecimal(hourlyRate),
           quantityHours: toDecimal(quantityHours),
           status: "DRAFT",
-          notes: mission.notes ?? "Mission importée depuis l’assistant IA.",
+          notes: mission.notes?.trim() || "Mission importée depuis l'assistant IA.",
         },
       });
+
+      importedCount += 1;
 
       if (mission.fuelAmount && mission.fuelAmount > 0) {
         await tx.expense.create({
@@ -104,12 +141,27 @@ export async function importAiMissionsAction(formData: FormData) {
             type: "FUEL",
             label: "Frais importés par IA",
             amount: toDecimal(mission.fuelAmount),
-            expenseDate: new Date(`${mission.date}T00:00:00.000Z`),
-            notes: "Frais détectés pendant l’extraction IA.",
+            expenseDate: missionDate,
+            notes: "Frais détectés pendant l'extraction IA.",
           },
         });
+
+        expenseCount += 1;
       }
     }
+
+    await tx.auditLog.create({
+      data: {
+        organizationId: organization.id,
+        action: "ai.missions_imported",
+        entityType: "Mission",
+        metadata: {
+          importedCount,
+          expenseCount,
+          clientId,
+        },
+      },
+    });
   });
 
   revalidatePath("/ai");
