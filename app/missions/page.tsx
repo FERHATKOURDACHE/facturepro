@@ -84,7 +84,16 @@ export default async function MissionsPage() {
 
           {clients.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-amber-300 bg-amber-50 p-5 text-amber-900">
-              Ajoute d'abord un client dans la page Clients.
+              <p className="text-lg font-black">Client requis</p>
+              <p className="mt-2 text-sm leading-6">
+                Avant de créer une mission, ajoute au moins un client. Chaque mission doit être rattachée à un client pour pouvoir être facturée correctement.
+              </p>
+              <a
+                href="/clients"
+                className="mt-4 inline-flex rounded-full bg-amber-900 px-5 py-3 text-sm font-bold text-white"
+              >
+                Ajouter un client
+              </a>
             </div>
           ) : (
             <form action={createMissionAction} className="grid gap-4">
@@ -196,10 +205,19 @@ export default async function MissionsPage() {
 
         {missions.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center">
-            <p className="text-lg font-black">Aucune mission pour le moment</p>
-            <p className="mt-2 text-slate-600">
-              Ajoute une mission manuellement ou saisis une nouvelle prestation.
+            <p className="text-sm font-bold uppercase tracking-[0.25em] text-[var(--primary)]">
+              Suivi du temps
             </p>
+            <p className="mt-3 text-xl font-black text-slate-950">
+              Aucune mission enregistrée
+            </p>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600">
+              Saisis ta première prestation pour suivre tes heures, tes frais et préparer automatiquement tes futures factures.
+            </p>
+            <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-left text-sm leading-6 text-slate-600">
+              <p className="font-bold text-slate-900">À renseigner :</p>
+              <p>Le client, la date, l’heure de début, l’heure de fin, le taux horaire et le lieu de mission.</p>
+            </div>
           </div>
         ) : (
           <div className="space-y-5">
@@ -326,6 +344,7 @@ export default async function MissionsPage() {
     </AppShell>
   );
 }
+
 
 
 

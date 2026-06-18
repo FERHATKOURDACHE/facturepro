@@ -92,7 +92,16 @@ export default async function FacturesPage() {
 
           {clients.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-amber-300 bg-amber-50 p-5 text-amber-900">
-              Ajoute d'abord un client dans la page Clients.
+              <p className="text-lg font-black">Client requis</p>
+              <p className="mt-2 text-sm leading-6">
+                Pour générer une facture, commence par ajouter un client, puis crée et valide des missions associées à ce client.
+              </p>
+              <a
+                href="/clients"
+                className="mt-4 inline-flex rounded-full bg-amber-900 px-5 py-3 text-sm font-bold text-white"
+              >
+                Ajouter un client
+              </a>
             </div>
           ) : (
             <form action={createInvoiceFromValidatedMissionsAction} className="grid gap-4">
@@ -169,8 +178,19 @@ placeholder="LibellÃ© dÃ©duction"
 
           {invoices.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center">
-              <p className="text-lg font-black">Aucune facture pour le moment</p>
-              <p className="mt-2 text-slate-600">Valide des missions, puis gÃ©nÃ¨re ta premiÃ¨re facture.</p>
+              <p className="text-sm font-bold uppercase tracking-[0.25em] text-[var(--primary)]">
+                Facturation
+              </p>
+              <p className="mt-3 text-xl font-black text-slate-950">
+                Aucune facture générée
+              </p>
+              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600">
+                Valide tes missions, sélectionne un client et une période, puis génère automatiquement une facture prête à exporter en PDF ou Excel.
+              </p>
+              <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-left text-sm leading-6 text-slate-600">
+                <p className="font-bold text-slate-900">Étapes recommandées :</p>
+                <p>1. Ajouter un client · 2. Créer une mission · 3. Valider la mission · 4. Générer la facture.</p>
+              </div>
             </div>
           ) : (
             <div className="space-y-5">
@@ -322,6 +342,7 @@ placeholder="LibellÃ© dÃ©duction"
     </AppShell>
   );
 }
+
 
 
 
