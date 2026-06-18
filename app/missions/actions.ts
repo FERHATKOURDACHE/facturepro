@@ -36,7 +36,7 @@ function numberFromForm(formData: FormData, key: string, defaultValue = 0) {
   const numberValue = Number(normalized);
 
   if (Number.isNaN(numberValue)) {
-    throw new Error(`Le champ ${key} doit Ãªtre un nombre.`);
+    throw new Error(`Le champ ${key} doit être un nombre.`);
   }
 
   return numberValue;
@@ -104,7 +104,7 @@ export async function createMissionAction(formData: FormData) {
           label: optionalString(formData.get("fuelLabel")) ?? "Frais carburant",
           amount: toDecimal(fuelAmount),
           expenseDate: new Date(`${date}T00:00:00.000Z`),
-          notes: "Frais ajoutÃ© depuis la mission.",
+          notes: "Frais ajouté depuis la mission.",
         },
       });
     }
@@ -213,7 +213,7 @@ export async function deleteMissionAction(formData: FormData) {
   }
 
   if (mission.invoiceId) {
-    throw new Error("Cette mission est dÃ©jÃ  liÃ©e Ã  une facture. Suppression bloquÃ©e.");
+    throw new Error("Cette mission est déjà liée à une facture. Suppression bloquée.");
   }
 
   await prisma.mission.delete({

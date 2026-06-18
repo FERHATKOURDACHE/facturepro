@@ -44,8 +44,8 @@ export async function AppShell({
 
   return (
     <main className="min-h-screen bg-[var(--background)] text-slate-950">
-      <aside className="fixed left-0 top-0 hidden h-screen w-72 border-r border-white/10 bg-slate-950 p-5 text-white shadow-2xl lg:block">
-        <Link href="/" className="group mb-7 flex items-center gap-3">
+      <aside className="fixed left-0 top-0 hidden h-screen w-72 flex-col border-r border-white/10 bg-slate-950 p-5 text-white shadow-2xl lg:flex">
+        <Link href="/" className="group flex shrink-0 items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-700 text-lg font-black text-white shadow-lg shadow-emerald-950/30 transition group-hover:scale-105">
             FP
           </div>
@@ -58,11 +58,12 @@ export async function AppShell({
           </div>
         </Link>
 
-        <div className="mb-5 rounded-[1.7rem] border border-white/10 bg-white/[0.06] p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-400/15 text-emerald-200">
+        <div className="mt-6 shrink-0 rounded-[1.7rem] border border-white/10 bg-white/[0.06] p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/15 text-emerald-200">
               <Sparkles size={20} />
             </div>
+
             <div>
               <p className="text-sm font-black">Espace professionnel</p>
               <p className="mt-1 text-xs leading-5 text-slate-300">
@@ -72,7 +73,7 @@ export async function AppShell({
           </div>
         </div>
 
-        <nav className="space-y-1.5">
+        <nav className="mt-6 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
           {nav.map((item) => {
             const Icon = item.icon;
 
@@ -80,22 +81,22 @@ export async function AppShell({
               <Link
                 key={item.href}
                 href={item.href}
-                className="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold text-slate-300 transition hover:bg-white/10 hover:text-white"
+                className="group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-bold text-slate-300 transition hover:bg-white/10 hover:text-white"
               >
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.06] text-emerald-200 transition group-hover:bg-emerald-400/15">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] text-emerald-200 transition group-hover:bg-emerald-400/15">
                   <Icon size={18} />
                 </span>
-                {item.label}
+                <span className="truncate">{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="absolute bottom-5 left-5 right-5 space-y-3">
+        <div className="mt-4 shrink-0">
           {session?.user ? (
             <div className="rounded-[1.7rem] border border-white/10 bg-white/[0.07] p-4 shadow-2xl shadow-black/20">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-[var(--primary)]">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-[var(--primary)]">
                   <UserCircle size={24} />
                 </div>
 

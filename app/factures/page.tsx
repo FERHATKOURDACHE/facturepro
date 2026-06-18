@@ -31,12 +31,12 @@ function formatDate(date: Date | null) {
 function statusBadge(status: string) {
   const labels: Record<string, string> = {
     DRAFT: "Brouillon",
-    READY: "PrÃªte",
-    SENT: "EnvoyÃ©e",
-    PARTIALLY_PAID: "Partiellement payÃ©e",
-    PAID: "PayÃ©e",
+    READY: "Prête",
+    SENT: "Envoyée",
+    PARTIALLY_PAID: "Partiellement payée",
+    PAID: "Payée",
     OVERDUE: "En retard",
-    CANCELLED: "AnnulÃ©e",
+    CANCELLED: "Annulée",
   };
 
   const classes: Record<string, string> = {
@@ -67,26 +67,26 @@ export default async function FacturesPage() {
   return (
     <AppShell
       title="Factures"
-      subtitle="GÃ©nÃ©ration rÃ©elle d'une facture depuis les missions validÃ©es."
+      subtitle="Génération réelle d'une facture depuis les missions validées."
     >
       <div className="grid gap-5 md:grid-cols-5">
         <StatCard label="Factures" value={`${stats.invoiceCount}`} helper="En base PostgreSQL" />
-        <StatCard label="Ã€ facturer" value={`${stats.validatedMissionsCount}`} helper="Missions validÃ©es" />
-        <StatCard label="Total facturÃ©" value={formatCurrency(stats.totalInvoiced)} />
+        <StatCard label="À facturer" value={`${stats.validatedMissionsCount}`} helper="Missions validées" />
+        <StatCard label="Total facturé" value={formatCurrency(stats.totalInvoiced)} />
         <StatCard label="En attente" value={formatCurrency(stats.totalOpen)} />
-        <StatCard label="PayÃ©" value={formatCurrency(stats.totalPaid)} />
+        <StatCard label="Payé" value={formatCurrency(stats.totalPaid)} />
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
         <section className="card rounded-[2rem] p-6">
           <div className="mb-6">
             <p className="text-sm font-bold uppercase tracking-[0.25em] text-[var(--primary)]">
-              GÃ©nÃ©ration automatique
+              Génération automatique
             </p>
-            <h2 className="mt-2 text-2xl font-black">CrÃ©er une facture depuis les missions</h2>
+            <h2 className="mt-2 text-2xl font-black">Créer une facture depuis les missions</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              SÃ©lectionne un client et une pÃ©riode. L'application rÃ©cupÃ¨re les missions validÃ©es non facturÃ©es,
-              groupe les lignes par taux horaire, ajoute les frais, puis applique la dÃ©duction.
+              Sélectionne un client et une période. L'application récupère les missions validées non facturées,
+              groupe les lignes par taux horaire, ajoute les frais, puis applique la déduction.
             </p>
           </div>
 
@@ -116,7 +116,7 @@ export default async function FacturesPage() {
               <select className="input" name="profileId" defaultValue={defaultProfile?.id}>
                 {profiles.map((profile) => (
                   <option key={profile.id} value={profile.id}>
-                    {profile.legalName} {profile.isDefault ? "(profil par dÃ©faut)" : ""}
+                    {profile.legalName} {profile.isDefault ? "(profil par défaut)" : ""}
                   </option>
                 ))}
               </select>
@@ -128,36 +128,36 @@ export default async function FacturesPage() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <input className="input" name="issueDate" type="date"  required />
-                <input className="input" name="number" placeholder="NumÃ©ro manuel, sinon auto" />
+                <input className="input" name="number" placeholder="Numéro manuel, sinon auto" />
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <input className="input" name="paidHoursDeduction" type="number" min="0" step="0.01" defaultValue="0" placeholder="Heures dÃ©jÃ  payÃ©es" />
-                <input className="input" name="paidHoursDeductionRate" type="number" min="0" step="0.01" defaultValue="0" placeholder="Taux de dÃ©duction" />
+                <input className="input" name="paidHoursDeduction" type="number" min="0" step="0.01" defaultValue="0" placeholder="Heures déjà payées" />
+                <input className="input" name="paidHoursDeductionRate" type="number" min="0" step="0.01" defaultValue="0" placeholder="Taux de déduction" />
               </div>
 
               <input
                 className="input"
                 name="deductionLabel"
-placeholder="LibellÃ© dÃ©duction"
+placeholder="Libellé déduction"
               />
 
               <textarea
                 className="input min-h-24"
                 name="legalNotice"
                 defaultValue={defaultProfile?.invoiceLegalNotice ?? "TVA non applicable - article 293 B du CGI"}
-                placeholder="Mention lÃ©gale"
+                placeholder="Mention légale"
               />
 
               <textarea
                 className="input min-h-24"
                 name="notes"
-                defaultValue="Facture gÃ©nÃ©rÃ©e automatiquement depuis les missions validÃ©es de la pÃ©riode."
+                defaultValue="Facture générée automatiquement depuis les missions validées de la période."
                 placeholder="Notes internes / client"
               />
 
               <button className="rounded-full bg-[var(--primary)] px-6 py-4 font-bold text-white shadow-xl transition hover:-translate-y-0.5">
-                GÃ©nÃ©rer la facture
+                Générer la facture
               </button>
             </form>
           )}
@@ -169,7 +169,7 @@ placeholder="LibellÃ© dÃ©duction"
               <p className="text-sm font-bold uppercase tracking-[0.25em] text-[var(--primary)]">
                 Historique
               </p>
-              <h2 className="mt-2 text-2xl font-black">Factures gÃ©nÃ©rÃ©es</h2>
+              <h2 className="mt-2 text-2xl font-black">Factures générées</h2>
             </div>
             <span className="badge bg-emerald-50 text-emerald-700">
               {invoices.length} facture{invoices.length > 1 ? "s" : ""}
@@ -213,10 +213,10 @@ placeholder="LibellÃ© dÃ©duction"
                           Client : <span className="font-semibold text-slate-800">{invoice.client.legalName}</span>
                         </p>
                         <p className="mt-1 text-sm text-slate-600">
-                          Ã‰mise le {formatDate(invoice.issueDate)} Â· Ã‰chÃ©ance {formatDate(invoice.dueDate)}
+                          Émise le {formatDate(invoice.issueDate)} · Échéance {formatDate(invoice.dueDate)}
                         </p>
                         <p className="mt-1 text-sm text-slate-600">
-                          PÃ©riode : {formatDate(invoice.periodStart)} au {formatDate(invoice.periodEnd)}
+                          Période : {formatDate(invoice.periodStart)} au {formatDate(invoice.periodEnd)}
                         </p>
 
                         <div className="mt-3 flex flex-wrap gap-2">
@@ -227,13 +227,13 @@ placeholder="LibellÃ© dÃ©duction"
                             {invoice.lines.length} ligne{invoice.lines.length > 1 ? "s" : ""}
                           </span>
                           <span className="badge bg-slate-100 text-slate-700">
-                            PayÃ© : {formatCurrency(paidAmount)}
+                            Payé : {formatCurrency(paidAmount)}
                           </span>
                         </div>
                       </div>
 
                       <div className="rounded-3xl bg-slate-950 p-5 text-right text-white">
-                        <p className="text-sm text-slate-400">Total Ã  payer</p>
+                        <p className="text-sm text-slate-400">Total à payer</p>
                         <p className="mt-2 text-3xl font-black">{formatCurrency(decimalToNumber(invoice.total))}</p>
                         <p className="mt-1 text-sm text-slate-400">
                           TVA : {formatCurrency(decimalToNumber(invoice.vatAmount))}
@@ -243,7 +243,7 @@ placeholder="LibellÃ© dÃ©duction"
 
                     <details className="mt-5 rounded-2xl bg-slate-50 p-4">
                       <summary className="cursor-pointer font-black text-slate-800">
-                        Voir le dÃ©tail de la facture
+                        Voir le détail de la facture
                       </summary>
 
                       <div className="table-wrap mt-5">
@@ -251,8 +251,8 @@ placeholder="LibellÃ© dÃ©duction"
                           <thead>
                             <tr>
                               <th>Ligne</th>
-                              <th>QuantitÃ©</th>
-                              <th>UnitÃ©</th>
+                              <th>Quantité</th>
+                              <th>Unité</th>
                               <th>Prix unitaire</th>
                               <th>Total</th>
                             </tr>
@@ -304,14 +304,14 @@ placeholder="LibellÃ© dÃ©duction"
                         <input type="hidden" name="id" value={invoice.id} />
                         <input type="hidden" name="status" value="SENT" />
                         <button className="w-full rounded-full bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700">
-                          Marquer envoyÃ©e
+                          Marquer envoyée
                         </button>
                       </form>
 
                       <form action={registerInvoicePaymentAction} className="rounded-2xl bg-emerald-50 p-3">
                         <input type="hidden" name="id" value={invoice.id} />
                         <input className="input mb-2 bg-white" name="amount" type="number" min="0" step="0.01" defaultValue={decimalToNumber(invoice.total)} />
-                        <input className="input mb-2 bg-white" name="reference" placeholder="RÃ©fÃ©rence paiement" />
+                        <input className="input mb-2 bg-white" name="reference" placeholder="Référence paiement" />
                         <button className="w-full rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white">
                           Enregistrer paiement
                         </button>
@@ -328,7 +328,7 @@ placeholder="LibellÃ© dÃ©duction"
                       <form action={cancelInvoiceAction}>
                         <input type="hidden" name="id" value={invoice.id} />
                         <button className="w-full rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700">
-                          Annuler / libÃ©rer missions
+                          Annuler / libérer missions
                         </button>
                       </form>
                     </div>
@@ -342,6 +342,7 @@ placeholder="LibellÃ© dÃ©duction"
     </AppShell>
   );
 }
+
 
 
 
