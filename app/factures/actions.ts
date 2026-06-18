@@ -23,7 +23,7 @@ function requiredString(formData: FormData, key: string) {
   const value = formData.get(key);
 
   if (typeof value !== "string" || value.trim().length === 0) {
-    throw new Error(`Le champ ${ key } est obligatoire.`);
+    throw new Error(`Le champ ${key} est obligatoire.`);
   }
 
   return value.trim();
@@ -47,7 +47,7 @@ function numberFromForm(formData: FormData, key: string, defaultValue = 0) {
 }
 
 function dateFromInput(value: string, endOfDay = false) {
-  return new Date(`${ value }T${ endOfDay ? "23:59:59.999" : "00:00:00.000" } Z`);
+  return new Date(`${value}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}Z`);
 }
 
 function addDays(date: Date, days: number) {
