@@ -20,12 +20,49 @@ import {
 
 export const dynamic = "force-dynamic";
 
+type MissionsPageProps = {
+  searchParams?: Promise<{
+    saved?: string;
+  }>;
+};
+
 function toInputDate(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
 function toInputTime(date: Date) {
   return date.toISOString().slice(11, 16);
+}
+
+function getSavedMessage(saved?: string) {
+  const messages: Record<string, { title: string; message: string }> = {
+    created: {
+      title: "Mission enregistrée",
+      message: "La mission a bien été ajoutée en brouillon. Tu peux la valider quand elle est prête à facturer.",
+    },
+    updated: {
+      title: "Mission mise à jour",
+      message: "Les informations de la mission ont bien été sauvegardées.",
+    },
+    validated: {
+      title: "Mission validée",
+      message: "La mission est prête à être utilisée pour générer une facture.",
+    },
+    drafts_validated: {
+      title: "Brouillons validés",
+      message: "Toutes les missions en brouillon ont été validées.",
+    },
+    draft: {
+      title: "Mission remise en brouillon",
+      message: "La mission peut de nouveau être modifiée avant facturation.",
+    },
+    deleted: {
+      title: "Mission supprimée",
+      message: "La mission a bien été supprimée.",
+    },
+  };
+
+  return saved ? messages[saved] ?? null : null;
 }
 
 function statusBadge(status: string) {
@@ -52,9 +89,13 @@ function statusBadge(status: string) {
   );
 }
 
-export default async function MissionsPage() {
+export default async function MissionsPage({ searchParams }: MissionsPageProps) {
   await requireUser();
   await requireCompanyProfileCompleted();
+  
+  const params = await searchParams;
+  const savedMessage = getSavedMessage(params?.saved);
+
   const { clients, missions, stats, weeklyTotals, locationTotals } = await getMissionPageData();
   const defaultClient = clients[0];
   const draftCount = missions.filter((mission) => mission.status === "DRAFT").length;
@@ -71,6 +112,53 @@ export default async function MissionsPage() {
         <StatCard label="Frais" value={formatCurrency(stats.totalExpenses)} helper="Essence / autres" />
         <StatCard label="Total" value={formatCurrency(stats.totalWithExpenses)} helper="Prestations + frais" />
       </div>
+
+      {savedMessage && (
+        <section className="mt-6 rounded-[2rem] border border-emerald-200 bg-emerald-50 p-5 text-emerald-900">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-lg font-black">{savedMessage.title}</p>
+              <p className="mt-1 text-sm leading-6">{savedMessage.message}</p>
+            </div>
+
+            <span className="w-fit rounded-full bg-white px-4 py-2 text-sm font-black text-emerald-700 ring-1 ring-emerald-100">
+              Sauvegarde OK
+            </span>
+          </div>
+        </section>
+      )}
+
+      <section className="mt-6 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.25em] text-[var(--primary)]">
+              Parcours mission
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-slate-950">
+              Mission → validation → facture
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+              Ajoute tes heures en brouillon, vérifie les informations, valide
+              les missions terminées, puis génère une facture depuis la page Factures.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <a
+              href="/ai"
+              className="rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-black text-slate-800 transition hover:bg-white"
+            >
+              Importer avec l'IA
+            </a>
+            <a
+              href="/factures"
+              className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5"
+            >
+              Aller aux factures
+            </a>
+          </div>
+        </div>
+      </section>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <section className="card rounded-[2rem] p-6">

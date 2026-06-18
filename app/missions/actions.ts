@@ -1,7 +1,7 @@
 ﻿"use server";
 
 import { revalidatePath } from "next/cache";
-import { Prisma } from "@prisma/client";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentOrganization } from "@/lib/current-organization";
 import {
@@ -42,7 +42,10 @@ function numberFromForm(formData: FormData, key: string, defaultValue = 0) {
   return numberValue;
 }
 
-async function assertClientBelongsToOrganization(clientId: string, organizationId: string) {
+async function assertClientBelongsToOrganization(
+  clientId: string,
+  organizationId: string
+) {
   const client = await prisma.client.findFirst({
     where: {
       id: clientId,
@@ -113,6 +116,8 @@ export async function createMissionAction(formData: FormData) {
   revalidatePath("/missions");
   revalidatePath("/dashboard");
   revalidatePath("/factures");
+
+  redirect("/missions?saved=created");
 }
 
 export async function updateMissionAction(formData: FormData) {
@@ -156,6 +161,8 @@ export async function updateMissionAction(formData: FormData) {
   revalidatePath("/missions");
   revalidatePath("/dashboard");
   revalidatePath("/factures");
+
+  redirect("/missions?saved=updated");
 }
 
 export async function validateMissionAction(formData: FormData) {
@@ -174,6 +181,9 @@ export async function validateMissionAction(formData: FormData) {
 
   revalidatePath("/missions");
   revalidatePath("/dashboard");
+  revalidatePath("/factures");
+
+  redirect("/missions?saved=validated");
 }
 
 export async function validateDraftMissionsAction() {
@@ -193,6 +203,8 @@ export async function validateDraftMissionsAction() {
   revalidatePath("/missions");
   revalidatePath("/dashboard");
   revalidatePath("/factures");
+
+  redirect("/missions?saved=drafts_validated");
 }
 
 export async function draftMissionAction(formData: FormData) {
@@ -211,6 +223,9 @@ export async function draftMissionAction(formData: FormData) {
 
   revalidatePath("/missions");
   revalidatePath("/dashboard");
+  revalidatePath("/factures");
+
+  redirect("/missions?saved=draft");
 }
 
 export async function deleteMissionAction(formData: FormData) {
@@ -232,7 +247,9 @@ export async function deleteMissionAction(formData: FormData) {
   }
 
   if (mission.invoiceId) {
-    throw new Error("Cette mission est déjà liée à une facture. Suppression bloquée.");
+    throw new Error(
+      "Cette mission est déjà liée à une facture. Suppression bloquée."
+    );
   }
 
   await prisma.mission.delete({
@@ -245,7 +262,6 @@ export async function deleteMissionAction(formData: FormData) {
   revalidatePath("/missions");
   revalidatePath("/dashboard");
   revalidatePath("/factures");
+
+  redirect("/missions?saved=deleted");
 }
-
-
-
