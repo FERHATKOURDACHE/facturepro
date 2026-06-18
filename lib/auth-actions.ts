@@ -50,7 +50,7 @@ export async function registerAction(formData: FormData) {
   await signIn("credentials", {
     email,
     password,
-    redirectTo: "/parametres?onboarding=required",
+    redirectTo: "/apres-connexion",
   });
 }
 
@@ -66,7 +66,7 @@ export async function loginAction(formData: FormData) {
     await signIn("credentials", {
       email,
       password,
-      redirectTo: "/dashboard",
+      redirectTo: "/apres-connexion",
     });
   } catch (error) {
     if (error instanceof AuthError) {
@@ -82,3 +82,4 @@ export async function logoutAction() {
     redirectTo: "/connexion",
   });
 }
+

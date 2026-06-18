@@ -12,7 +12,7 @@ export function GoogleOAuthButton({ label }: GoogleOAuthButtonProps) {
       type="button"
       onClick={() => {
         void signIn("google", {
-          redirectTo: "/dashboard",
+          redirectTo: "/apres-connexion",
         });
       }}
       className="mt-6 flex w-full justify-center rounded-full border border-slate-200 bg-white px-6 py-4 font-bold text-slate-800 shadow-sm transition hover:bg-slate-50"
@@ -21,3 +21,4 @@ export function GoogleOAuthButton({ label }: GoogleOAuthButtonProps) {
     </button>
   );
 }
+
