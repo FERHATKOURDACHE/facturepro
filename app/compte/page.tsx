@@ -90,7 +90,7 @@ export default async function ComptePage() {
     },
     {
       label: "Sécurité",
-      value: hasPassword ? "Mot de passe actif" : "Compte OAuth",
+      value: securityLabel,
       helper: hasPassword
         ? "Ce compte peut se connecter avec email et mot de passe"
         : "Ce compte utilise une connexion externe",
@@ -102,7 +102,59 @@ export default async function ComptePage() {
       title="Mon compte"
       subtitle="Consulte les informations de ton compte, ton mode de connexion et ton plan actuel."
     >
-      <section className="mx-auto max-w-5xl space-y-6">
+      <section className="mx-auto max-w-6xl space-y-6">
+        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.25em] text-[var(--primary)]">
+                Parcours compte
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-slate-950">
+                Profil → sécurité → paramètres
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                Cette page te permet de vérifier ton identité de connexion, ton plan,
+                ton niveau de sécurité et les raccourcis utiles pour gérer ton espace.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/parametres"
+                className="rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-black text-slate-800 transition hover:bg-white"
+              >
+                Modifier les paramètres
+              </Link>
+              <Link
+                href="/dashboard"
+                className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5"
+              >
+                Tableau de bord
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            <div className="rounded-3xl bg-slate-50 p-5">
+              <p className="text-sm font-bold text-slate-500">Connexion</p>
+              <p className="mt-2 text-lg font-black text-slate-950">
+                {providerLabel(activeProvider)}
+              </p>
+            </div>
+            <div className="rounded-3xl bg-emerald-50 p-5">
+              <p className="text-sm font-bold text-emerald-700">Plan actuel</p>
+              <p className="mt-2 text-lg font-black text-emerald-950">
+                {planLabel}
+              </p>
+            </div>
+            <div className="rounded-3xl bg-amber-50 p-5">
+              <p className="text-sm font-bold text-amber-700">Sécurité</p>
+              <p className="mt-2 text-lg font-black text-amber-950">
+                {securityLabel}
+              </p>
+            </div>
+          </div>
+        </div>
         <div className="card rounded-[2rem] p-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
             <div>
