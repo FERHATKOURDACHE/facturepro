@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+﻿import { prisma } from "@/lib/prisma";
 import { getCurrentOrganization } from "@/lib/current-organization";
 
 export async function getClients() {
@@ -8,21 +8,38 @@ export async function getClients() {
     where: {
       organizationId: organization.id,
     },
-    orderBy: {
-      createdAt: "desc",
+    include: {
+      _count: {
+        select: {
+          missions: true,
+          invoices: true,
+        },
+      },
     },
+    orderBy: [
+      { createdAt: "desc" },
+      { legalName: "asc" },
+    ],
   });
 }
 
 export async function getClientStats() {
   const organization = await getCurrentOrganization();
 
-  const [clientCount, missionCount, invoiceCount] = await Promise.all([
-    prisma.client.count({
-      where: {
-        organizationId: organization.id,
-      },
-    }),
+  const clients = await prisma.client.findMany({
+    where: {
+      organizationId: organization.id,
+    },
+    select: {
+      id: true,
+      email: true,
+      phone: true,
+      city: true,
+      siret: true,
+    },
+  });
+
+  const [missionCount, invoiceCount] = await Promise.all([
     prisma.mission.count({
       where: {
         organizationId: organization.id,
@@ -35,9 +52,14 @@ export async function getClientStats() {
     }),
   ]);
 
+  const incompleteCount = clients.filter(
+    (client) => !client.email || !client.city || !client.siret
+  ).length;
+
   return {
-    clientCount,
+    clientCount: clients.length,
     missionCount,
     invoiceCount,
+    incompleteCount,
   };
 }
