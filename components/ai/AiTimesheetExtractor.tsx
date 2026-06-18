@@ -43,7 +43,7 @@ type AiResult = {
 };
 
 const EXAMPLE_TEXT =
-  "samedi 2 mai 2026 de 6:30 jusque à 12:30 Carrefour Market Boulogne puis de 13:30 jusque 20:00 Carrefour Market Ivry-sur-Seine. Taux 13€/h.";
+  "samedi 2 mai 2026 de 6:30 jusqu'à 12:30 Carrefour Market Boulogne puis de 13:30 jusqu'à 20:00 Carrefour Market Ivry-sur-Seine. Taux 13€/h. Frais essence 20€.";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("fr-FR", {
@@ -171,6 +171,14 @@ export function AiTimesheetExtractor({
         <div className="mt-6 rounded-3xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
           Exemple : “lundi 3 juin de 9h à 17h chez Client A, taux 13€/h,
           frais essence 20€”.
+        </div>
+
+        <div className="mt-4 rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+          <p className="font-black">Contrôle avant import</p>
+          <p className="mt-1">
+            L'extraction peut se tromper sur un lieu, un taux ou une date.
+            Vérifie toujours la prévisualisation avant de créer les missions.
+          </p>
         </div>
 
         <textarea
@@ -362,8 +370,14 @@ export function AiTimesheetExtractor({
 
                   {clients.length === 0 ? (
                     <div className="mt-3 rounded-2xl bg-white p-4 text-sm font-semibold text-amber-800">
-                      Ajoute d’abord un client dans la page Clients avant
-                      d’importer des missions.
+                      Ajoute d'abord un client dans la page Clients avant
+                      d'importer des missions.
+                      <a
+                        href="/clients"
+                        className="mt-3 inline-flex rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white"
+                      >
+                        Accéder aux clients
+                      </a>
                     </div>
                   ) : (
                     <select
@@ -380,6 +394,11 @@ export function AiTimesheetExtractor({
                       ))}
                     </select>
                   )}
+
+                  <p className="mt-4 rounded-2xl bg-white/80 p-3 text-sm leading-6 text-emerald-900">
+                    Les missions seront créées en brouillon. Tu pourras les
+                    vérifier, modifier puis valider dans la page Missions.
+                  </p>
 
                   <button
                     type="submit"

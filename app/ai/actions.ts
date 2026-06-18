@@ -117,5 +117,5 @@ export async function importAiMissionsAction(formData: FormData) {
   revalidatePath("/dashboard");
   revalidatePath("/factures");
 
-  redirect("/missions");
+  redirect("/missions?saved=created");
 }
