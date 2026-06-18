@@ -73,7 +73,7 @@ export async function AppShell({
           </div>
         </div>
 
-        <nav className="mt-6 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
+        <nav className="sidebar-scroll mt-6 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
           {nav.map((item) => {
             const Icon = item.icon;
 
@@ -215,3 +215,4 @@ export async function AppShell({
     </main>
   );
 }
+

@@ -168,3 +168,12 @@ details > summary::-webkit-details-marker {
     transition: none !important;
   }
 }
+
+.sidebar-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+  display: none;
+}

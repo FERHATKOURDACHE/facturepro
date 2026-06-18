@@ -1,4 +1,4 @@
-import { z } from "zod";
+﻿import { z } from "zod";
 
 export const ExtractedTimesheetSchema = z.object({
   clientName: z.string().nullable(),
@@ -161,7 +161,7 @@ function extractDate(line: string): ParsedDate | null {
   if (!frenchDate) return null;
 
   const day = frenchDate[1].padStart(2, "0");
-  const month = MONTHS[frenchDate[2].toLowerCase()];
+  const month = MONTHS[frenchDate[2].toLowerCase()] ?? "01";
   const year = normalizeYear(frenchDate[3]);
 
   return {
@@ -174,7 +174,8 @@ function extractTimeRanges(line: string): ParsedTimeRange[] {
   const ranges: ParsedTimeRange[] = [];
 
   const regex =
-    /(?:de\s*)?(\d{1,2})(?:[:hH.](\d{2}))?\s*(?:jusqu(?:e)?(?:\s*(?:à|a))?|jusqu'à|jusqua|jusqu a|jusqu à|à|a|-)\s*(\d{1,2})(?:[:hH.](\d{2}))?/gi;
+    /(?:\bde\s*)?(\d{1,2})(?:[:hH.](\d{2}))?\s*(?:jusqu(?:e|')?\s*(?:à|a)?|jusqua|jusqu a|à|a|-)\s*(\d{1,2})(?:[:hH.](\d{2}))?/gi;
+
   let match: RegExpExecArray | null;
 
   while ((match = regex.exec(line)) !== null) {
@@ -196,9 +197,22 @@ function extractTimeRanges(line: string): ParsedTimeRange[] {
 
 function cleanLocation(segment: string) {
   const cleaned = segment
-    .replace(/\b(et|de|à|a|chez|mission|travail|prestation|intervention)\b/gi, " ")
-    .replace(/\b\d+(?:[\.,]\d+)?\s*(?:€|eur|euros)\s*(?:\/h|par heure|l'heure)?\b/gi, " ")
-    .replace(/\b(essence|carburant|frais)\b.*?\d+(?:[\.,]\d+)?\s*(?:€|eur|euros)?/gi, " ")
+    .replace(
+      /\b(?:taux|tarif|prix)\s*(?:horaire)?\s*:?\s*\d+(?:[\.,]\d+)?\s*(?:€|eur|euros)?\s*(?:\/h|par heure|l'heure)?\b/gi,
+      " "
+    )
+    .replace(
+      /\b\d+(?:[\.,]\d+)?\s*(?:€|eur|euros)\s*(?:\/h|par heure|l'heure)?\b/gi,
+      " "
+    )
+    .replace(
+      /\b(?:essence|carburant|frais)\b.*?\d+(?:[\.,]\d+)?\s*(?:€|eur|euros)?/gi,
+      " "
+    )
+    .replace(
+      /\b(?:puis|ensuite|après|avant|et|de|à|a|chez|mission|travail|prestation|intervention|taux|tarif|prix|horaire|heures?)\b/gi,
+      " "
+    )
     .replace(/[,:;.]+/g, " ")
     .replace(/\s*-\s*/g, "-")
     .replace(/\s+/g, " ")
@@ -211,7 +225,7 @@ function cleanLocation(segment: string) {
 
 function extractHourlyRate(line: string) {
   const match = line.match(
-    /(\d+(?:[\.,]\d+)?)\s*(?:€|eur|euros)\s*(?:\/h|par heure|l'heure)/i
+    /(?:taux|tarif|prix)?\s*(\d+(?:[\.,]\d+)?)\s*(?:€|eur|euros)\s*(?:\/h|par heure|l'heure)/i
   );
 
   return match ? toNumber(match[1]) : null;
@@ -226,7 +240,19 @@ function extractFuelAmount(line: string) {
 }
 
 function toSmartTitle(value: string) {
-  const lowerWords = new Set(["sur", "sous", "de", "du", "des", "la", "le", "les", "et"]);
+  const lowerWords = new Set([
+    "sur",
+    "sous",
+    "de",
+    "du",
+    "des",
+    "la",
+    "le",
+    "les",
+    "et",
+    "aux",
+    "au",
+  ]);
 
   return value
     .split(" ")
@@ -237,7 +263,9 @@ function toSmartTitle(value: string) {
           const lower = part.toLowerCase();
 
           if (lower === "mcdo") return "McDo";
-          if (lower === "mcdonald" || lower === "mcdonalds") return "McDonald";
+          if (lower === "mcdonald" || lower === "mcdonalds") {
+            return "McDonald";
+          }
 
           if (wordIndex > 0 && partIndex > 0 && lowerWords.has(lower)) {
             return lower;
