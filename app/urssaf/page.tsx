@@ -95,6 +95,8 @@ export default async function UrssafPage({
     acreStart: acreStartDate,
     acreEnd: acreEndDate,
   });
+  const periodLabel = `${start} → ${end}`;
+  const hasPayments = payments.length > 0;
 
   return (
     <AppShell
@@ -128,6 +130,60 @@ export default async function UrssafPage({
           helper={`Net estimé : ${formatCurrency(estimate.netBeforeIncomeTax)}`}
         />
       </div>
+
+      <section className="mt-6 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.25em] text-[var(--primary)]">
+              Parcours URSSAF
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-slate-950">
+              Factures payées → CA encaissé → déclaration
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+              FacturePro additionne les paiements encaissés sur la période
+              sélectionnée. Les factures non payées ne sont pas intégrées dans
+              cette estimation.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <a
+              href="/factures"
+              className="rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-black text-slate-800 transition hover:bg-white"
+            >
+              Voir les factures
+            </a>
+            <a
+              href={URSSAF_OFFICIAL_PORTAL_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5"
+            >
+              Portail URSSAF
+            </a>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <div className="rounded-3xl bg-slate-50 p-5">
+            <p className="text-sm font-bold text-slate-500">Période analysée</p>
+            <p className="mt-2 text-lg font-black text-slate-950">{periodLabel}</p>
+          </div>
+          <div className="rounded-3xl bg-emerald-50 p-5">
+            <p className="text-sm font-bold text-emerald-700">Base de calcul</p>
+            <p className="mt-2 text-lg font-black text-emerald-950">
+              {paymentCount} paiement{paymentCount > 1 ? "s" : ""} encaissé{paymentCount > 1 ? "s" : ""}
+            </p>
+          </div>
+          <div className="rounded-3xl bg-amber-50 p-5">
+            <p className="text-sm font-bold text-amber-700">À vérifier</p>
+            <p className="mt-2 text-lg font-black text-amber-950">
+              Déclaration officielle URSSAF
+            </p>
+          </div>
+        </div>
+      </section>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
         <section className="card rounded-[2rem] p-6">
@@ -192,7 +248,7 @@ export default async function UrssafPage({
               </label>
 
               <p className="mt-2 text-sm leading-6 text-emerald-800">
-                Si l'utilisateur bénéficie de l'ACRE, les paiements encaissés dans la période ACRE sont calculés avec un taux minoré.
+                Si tu bénéficies de l'ACRE, les paiements encaissés dans la période ACRE sont calculés avec un taux minoré.
               </p>
 
               <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -282,13 +338,14 @@ export default async function UrssafPage({
             </p>
             <h3 className="mt-2 text-xl font-black">Paiements pris en compte</h3>
 
-            {invoices.length === 0 ? (
+            {!hasPayments ? (
               <div className="mt-6 rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center">
                 <p className="text-xl font-black text-slate-950">
                   Aucun paiement encaissé sur cette période
                 </p>
                 <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600">
-                  Crée une facture, enregistre un paiement, puis sélectionne la période d'encaissement correspondante.
+                  Crée une facture, enregistre un paiement avec sa date
+                  d'encaissement, puis sélectionne la période correspondante.
                 </p>
               </div>
             ) : (
