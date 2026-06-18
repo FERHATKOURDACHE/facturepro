@@ -1,5 +1,7 @@
-
-import { requireUser } from "@/lib/require-auth"; import { AppShell } from "@/components/AppShell";
+﻿
+import { requireUser } from "@/lib/require-auth";
+import { requireCompanyProfileCompleted } from "@/lib/onboarding";
+import { AppShell } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
 import {
   cancelInvoiceAction,
@@ -29,12 +31,12 @@ function formatDate(date: Date | null) {
 function statusBadge(status: string) {
   const labels: Record<string, string> = {
     DRAFT: "Brouillon",
-    READY: "Prête",
-    SENT: "Envoyée",
-    PARTIALLY_PAID: "Partiellement payée",
-    PAID: "Payée",
+    READY: "PrÃªte",
+    SENT: "EnvoyÃ©e",
+    PARTIALLY_PAID: "Partiellement payÃ©e",
+    PAID: "PayÃ©e",
     OVERDUE: "En retard",
-    CANCELLED: "Annulée",
+    CANCELLED: "AnnulÃ©e",
   };
 
   const classes: Record<string, string> = {
@@ -56,6 +58,7 @@ function decimalToNumber(value: unknown) {
 
 export default async function FacturesPage() {
   await requireUser();
+  await requireCompanyProfileCompleted();
   const { clients, profiles, invoices, stats } = await getInvoicePageData();
 
   const defaultClient = clients[0];
@@ -64,26 +67,26 @@ export default async function FacturesPage() {
   return (
     <AppShell
       title="Factures"
-      subtitle="Génération réelle d'une facture depuis les missions validées."
+      subtitle="GÃ©nÃ©ration rÃ©elle d'une facture depuis les missions validÃ©es."
     >
       <div className="grid gap-5 md:grid-cols-5">
         <StatCard label="Factures" value={`${stats.invoiceCount}`} helper="En base PostgreSQL" />
-        <StatCard label="À facturer" value={`${stats.validatedMissionsCount}`} helper="Missions validées" />
-        <StatCard label="Total facturé" value={formatCurrency(stats.totalInvoiced)} />
+        <StatCard label="Ã€ facturer" value={`${stats.validatedMissionsCount}`} helper="Missions validÃ©es" />
+        <StatCard label="Total facturÃ©" value={formatCurrency(stats.totalInvoiced)} />
         <StatCard label="En attente" value={formatCurrency(stats.totalOpen)} />
-        <StatCard label="Payé" value={formatCurrency(stats.totalPaid)} />
+        <StatCard label="PayÃ©" value={formatCurrency(stats.totalPaid)} />
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
         <section className="card rounded-[2rem] p-6">
           <div className="mb-6">
             <p className="text-sm font-bold uppercase tracking-[0.25em] text-[var(--primary)]">
-              Génération automatique
+              GÃ©nÃ©ration automatique
             </p>
-            <h2 className="mt-2 text-2xl font-black">Créer une facture depuis les missions</h2>
+            <h2 className="mt-2 text-2xl font-black">CrÃ©er une facture depuis les missions</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Sélectionne un client et une période. L'application récupère les missions validées non facturées,
-              groupe les lignes par taux horaire, ajoute les frais, puis applique la déduction.
+              SÃ©lectionne un client et une pÃ©riode. L'application rÃ©cupÃ¨re les missions validÃ©es non facturÃ©es,
+              groupe les lignes par taux horaire, ajoute les frais, puis applique la dÃ©duction.
             </p>
           </div>
 
@@ -104,7 +107,7 @@ export default async function FacturesPage() {
               <select className="input" name="profileId" defaultValue={defaultProfile?.id}>
                 {profiles.map((profile) => (
                   <option key={profile.id} value={profile.id}>
-                    {profile.legalName} {profile.isDefault ? "(profil par défaut)" : ""}
+                    {profile.legalName} {profile.isDefault ? "(profil par dÃ©faut)" : ""}
                   </option>
                 ))}
               </select>
@@ -116,37 +119,37 @@ export default async function FacturesPage() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <input className="input" name="issueDate" type="date" defaultValue="2026-05-31" required />
-                <input className="input" name="number" placeholder="Numéro manuel, sinon auto" />
+                <input className="input" name="number" placeholder="NumÃ©ro manuel, sinon auto" />
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <input className="input" name="paidHoursDeduction" type="number" min="0" step="0.01" defaultValue="65" placeholder="Heures déjà payées" />
-                <input className="input" name="paidHoursDeductionRate" type="number" min="0" step="0.01" defaultValue="13" placeholder="Taux de déduction" />
+                <input className="input" name="paidHoursDeduction" type="number" min="0" step="0.01" defaultValue="65" placeholder="Heures dÃ©jÃ  payÃ©es" />
+                <input className="input" name="paidHoursDeductionRate" type="number" min="0" step="0.01" defaultValue="13" placeholder="Taux de dÃ©duction" />
               </div>
 
               <input
                 className="input"
                 name="deductionLabel"
-                defaultValue="Déduction des 65 heures déjà réglées"
-                placeholder="Libellé déduction"
+                defaultValue="DÃ©duction des 65 heures dÃ©jÃ  rÃ©glÃ©es"
+                placeholder="LibellÃ© dÃ©duction"
               />
 
               <textarea
                 className="input min-h-24"
                 name="legalNotice"
                 defaultValue={defaultProfile?.invoiceLegalNotice ?? "TVA non applicable - article 293 B du CGI"}
-                placeholder="Mention légale"
+                placeholder="Mention lÃ©gale"
               />
 
               <textarea
                 className="input min-h-24"
                 name="notes"
-                defaultValue="Facture générée automatiquement depuis les missions validées de la période."
+                defaultValue="Facture gÃ©nÃ©rÃ©e automatiquement depuis les missions validÃ©es de la pÃ©riode."
                 placeholder="Notes internes / client"
               />
 
               <button className="rounded-full bg-[var(--primary)] px-6 py-4 font-bold text-white shadow-xl transition hover:-translate-y-0.5">
-                Générer la facture
+                GÃ©nÃ©rer la facture
               </button>
             </form>
           )}
@@ -158,7 +161,7 @@ export default async function FacturesPage() {
               <p className="text-sm font-bold uppercase tracking-[0.25em] text-[var(--primary)]">
                 Historique
               </p>
-              <h2 className="mt-2 text-2xl font-black">Factures générées</h2>
+              <h2 className="mt-2 text-2xl font-black">Factures gÃ©nÃ©rÃ©es</h2>
             </div>
             <span className="badge bg-emerald-50 text-emerald-700">
               {invoices.length} facture{invoices.length > 1 ? "s" : ""}
@@ -168,7 +171,7 @@ export default async function FacturesPage() {
           {invoices.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center">
               <p className="text-lg font-black">Aucune facture pour le moment</p>
-              <p className="mt-2 text-slate-600">Valide des missions, puis génère ta première facture.</p>
+              <p className="mt-2 text-slate-600">Valide des missions, puis gÃ©nÃ¨re ta premiÃ¨re facture.</p>
             </div>
           ) : (
             <div className="space-y-5">
@@ -191,10 +194,10 @@ export default async function FacturesPage() {
                           Client : <span className="font-semibold text-slate-800">{invoice.client.legalName}</span>
                         </p>
                         <p className="mt-1 text-sm text-slate-600">
-                          Émise le {formatDate(invoice.issueDate)} · Échéance {formatDate(invoice.dueDate)}
+                          Ã‰mise le {formatDate(invoice.issueDate)} Â· Ã‰chÃ©ance {formatDate(invoice.dueDate)}
                         </p>
                         <p className="mt-1 text-sm text-slate-600">
-                          Période : {formatDate(invoice.periodStart)} au {formatDate(invoice.periodEnd)}
+                          PÃ©riode : {formatDate(invoice.periodStart)} au {formatDate(invoice.periodEnd)}
                         </p>
 
                         <div className="mt-3 flex flex-wrap gap-2">
@@ -205,13 +208,13 @@ export default async function FacturesPage() {
                             {invoice.lines.length} ligne{invoice.lines.length > 1 ? "s" : ""}
                           </span>
                           <span className="badge bg-slate-100 text-slate-700">
-                            Payé : {formatCurrency(paidAmount)}
+                            PayÃ© : {formatCurrency(paidAmount)}
                           </span>
                         </div>
                       </div>
 
                       <div className="rounded-3xl bg-slate-950 p-5 text-right text-white">
-                        <p className="text-sm text-slate-400">Total à payer</p>
+                        <p className="text-sm text-slate-400">Total Ã  payer</p>
                         <p className="mt-2 text-3xl font-black">{formatCurrency(decimalToNumber(invoice.total))}</p>
                         <p className="mt-1 text-sm text-slate-400">
                           TVA : {formatCurrency(decimalToNumber(invoice.vatAmount))}
@@ -221,7 +224,7 @@ export default async function FacturesPage() {
 
                     <details className="mt-5 rounded-2xl bg-slate-50 p-4">
                       <summary className="cursor-pointer font-black text-slate-800">
-                        Voir le détail de la facture
+                        Voir le dÃ©tail de la facture
                       </summary>
 
                       <div className="table-wrap mt-5">
@@ -229,8 +232,8 @@ export default async function FacturesPage() {
                           <thead>
                             <tr>
                               <th>Ligne</th>
-                              <th>Quantité</th>
-                              <th>Unité</th>
+                              <th>QuantitÃ©</th>
+                              <th>UnitÃ©</th>
                               <th>Prix unitaire</th>
                               <th>Total</th>
                             </tr>
@@ -282,14 +285,14 @@ export default async function FacturesPage() {
                         <input type="hidden" name="id" value={invoice.id} />
                         <input type="hidden" name="status" value="SENT" />
                         <button className="w-full rounded-full bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700">
-                          Marquer envoyée
+                          Marquer envoyÃ©e
                         </button>
                       </form>
 
                       <form action={registerInvoicePaymentAction} className="rounded-2xl bg-emerald-50 p-3">
                         <input type="hidden" name="id" value={invoice.id} />
                         <input className="input mb-2 bg-white" name="amount" type="number" min="0" step="0.01" defaultValue={decimalToNumber(invoice.total)} />
-                        <input className="input mb-2 bg-white" name="reference" placeholder="Référence paiement" />
+                        <input className="input mb-2 bg-white" name="reference" placeholder="RÃ©fÃ©rence paiement" />
                         <button className="w-full rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white">
                           Enregistrer paiement
                         </button>
@@ -306,7 +309,7 @@ export default async function FacturesPage() {
                       <form action={cancelInvoiceAction}>
                         <input type="hidden" name="id" value={invoice.id} />
                         <button className="w-full rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700">
-                          Annuler / libérer missions
+                          Annuler / libÃ©rer missions
                         </button>
                       </form>
                     </div>
@@ -320,3 +323,4 @@ export default async function FacturesPage() {
     </AppShell>
   );
 }
+

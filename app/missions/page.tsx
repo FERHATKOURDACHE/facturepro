@@ -1,4 +1,5 @@
-import { requireUser } from "@/lib/require-auth";
+﻿import { requireUser } from "@/lib/require-auth";
+import { requireCompanyProfileCompleted } from "@/lib/onboarding";
 import { AppShell } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
 import {
@@ -30,10 +31,10 @@ function toInputTime(date: Date) {
 function statusBadge(status: string) {
   const labelMap: Record<string, string> = {
     DRAFT: "Brouillon",
-    VALIDATED: "Validée",
-    INVOICED: "Facturée",
-    PAID: "Payée",
-    CANCELLED: "Annulée",
+    VALIDATED: "ValidÃ©e",
+    INVOICED: "FacturÃ©e",
+    PAID: "PayÃ©e",
+    CANCELLED: "AnnulÃ©e",
   };
 
   const classMap: Record<string, string> = {
@@ -53,17 +54,18 @@ function statusBadge(status: string) {
 
 export default async function MissionsPage() {
   await requireUser();
+  await requireCompanyProfileCompleted();
   const { clients, missions, stats, weeklyTotals, locationTotals } = await getMissionPageData();
   const defaultClient = clients[0];
 
   return (
     <AppShell
       title="Missions & heures"
-      subtitle="Saisie réelle des horaires, calcul automatique des heures et totaux par semaine."
+      subtitle="Saisie rÃ©elle des horaires, calcul automatique des heures et totaux par semaine."
     >
       <div className="grid gap-5 md:grid-cols-5">
         <StatCard label="Missions" value={`${stats.missionCount}`} helper="En base PostgreSQL" />
-        <StatCard label="Heures" value={formatHours(stats.totalHours)} helper="Total calculé" />
+        <StatCard label="Heures" value={formatHours(stats.totalHours)} helper="Total calculÃ©" />
         <StatCard label="Prestations" value={formatCurrency(stats.totalServices)} helper="Hors frais" />
         <StatCard label="Frais" value={formatCurrency(stats.totalExpenses)} helper="Essence / autres" />
         <StatCard label="Total" value={formatCurrency(stats.totalWithExpenses)} helper="Prestations + frais" />
@@ -75,9 +77,9 @@ export default async function MissionsPage() {
             <p className="text-sm font-bold uppercase tracking-[0.25em] text-[var(--primary)]">
               Nouvelle mission
             </p>
-            <h2 className="mt-2 text-2xl font-black">Saisir une journée ou vacation</h2>
+            <h2 className="mt-2 text-2xl font-black">Saisir une journÃ©e ou vacation</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              L'application calcule automatiquement la durée travaillée avec l'heure de début, l'heure de fin et la pause.
+              L'application calcule automatiquement la durÃ©e travaillÃ©e avec l'heure de dÃ©but, l'heure de fin et la pause.
             </p>
           </div>
 
@@ -111,7 +113,7 @@ export default async function MissionsPage() {
 
               <input className="input" name="locationName" placeholder="Lieu / magasin" />
               <input className="input" name="address" placeholder="Adresse du lieu" />
-              <input className="input" name="fuelLabel" placeholder="Libellé frais, ex : Frais essence Étampes" />
+              <input className="input" name="fuelLabel" placeholder="LibellÃ© frais, ex : Frais essence Ã‰tampes" />
               <textarea className="input min-h-28" name="notes" placeholder="Notes internes" />
 
               <button className="rounded-full bg-[var(--primary)] px-6 py-4 font-bold text-white shadow-xl transition hover:-translate-y-0.5">
@@ -136,7 +138,7 @@ export default async function MissionsPage() {
               <h2 className="mt-2 text-2xl font-black">Totaux dynamiques</h2>
             </div>
             <span className="badge bg-emerald-50 text-emerald-700">
-              {stats.validatedCount} validée{stats.validatedCount > 1 ? "s" : ""}
+              {stats.validatedCount} validÃ©e{stats.validatedCount > 1 ? "s" : ""}
             </span>
           </div>
 
@@ -154,7 +156,7 @@ export default async function MissionsPage() {
                         <p className="font-black text-[var(--primary)]">{formatHours(week.hours)}</p>
                       </div>
                       <p className="mt-1 text-sm text-slate-500">
-                        {week.count} ligne{week.count > 1 ? "s" : ""} · {formatCurrency(week.amount)}
+                        {week.count} ligne{week.count > 1 ? "s" : ""} Â· {formatCurrency(week.amount)}
                       </p>
                     </div>
                   ))
@@ -175,7 +177,7 @@ export default async function MissionsPage() {
                         <p className="font-black text-[var(--primary)]">{formatHours(location.hours)}</p>
                       </div>
                       <p className="mt-1 text-sm text-slate-500">
-                        {location.count} mission{location.count > 1 ? "s" : ""} · {formatCurrency(location.amount)}
+                        {location.count} mission{location.count > 1 ? "s" : ""} Â· {formatCurrency(location.amount)}
                       </p>
                     </div>
                   ))
@@ -192,7 +194,7 @@ export default async function MissionsPage() {
             <p className="text-sm font-bold uppercase tracking-[0.25em] text-[var(--primary)]">
               Feuille de temps
             </p>
-            <h2 className="mt-2 text-2xl font-black">Missions enregistrées</h2>
+            <h2 className="mt-2 text-2xl font-black">Missions enregistrÃ©es</h2>
           </div>
           <span className="badge bg-slate-100 text-slate-700">
             {missions.length} ligne{missions.length > 1 ? "s" : ""}
@@ -225,10 +227,10 @@ export default async function MissionsPage() {
                       </div>
 
                       <p className="mt-2 text-sm text-slate-600">
-                        {formatDateFr(mission.date)} · {formatTimeUtc(mission.startTime)} - {formatTimeUtc(mission.endTime)}
+                        {formatDateFr(mission.date)} Â· {formatTimeUtc(mission.startTime)} - {formatTimeUtc(mission.endTime)}
                       </p>
                       <p className="mt-1 text-sm font-semibold text-slate-800">
-                        {mission.locationName ?? "Lieu non renseigné"}
+                        {mission.locationName ?? "Lieu non renseignÃ©"}
                       </p>
                       <p className="mt-1 text-sm text-slate-600">{mission.client.legalName}</p>
 
@@ -331,3 +333,4 @@ export default async function MissionsPage() {
     </AppShell>
   );
 }
+

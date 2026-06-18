@@ -1,4 +1,5 @@
-import { requireUser } from "@/lib/require-auth";
+﻿import { requireUser } from "@/lib/require-auth";
+import { requireCompanyProfileCompleted } from "@/lib/onboarding";
 import { AppShell } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
 import { createClientAction, deleteClientAction, updateClientAction } from "@/app/clients/actions";
@@ -17,16 +18,17 @@ function formatDate(date: Date) {
 
 export default async function ClientsPage() {
   await requireUser();
+  await requireCompanyProfileCompleted();
   const [clients, stats] = await Promise.all([getClients(), getClientStats()]);
 
   return (
     <AppShell
       title="Clients"
-      subtitle="Gestion réelle des clients connectée à PostgreSQL avec Prisma."
+      subtitle="Gestion rÃ©elle des clients connectÃ©e Ã  PostgreSQL avec Prisma."
     >
       <div className="grid gap-5 md:grid-cols-3">
-        <StatCard label="Clients" value={`${stats.clientCount}`} helper="Enregistrés en base" />
-        <StatCard label="Missions" value={`${stats.missionCount}`} helper="Liées aux clients" />
+        <StatCard label="Clients" value={`${stats.clientCount}`} helper="EnregistrÃ©s en base" />
+        <StatCard label="Missions" value={`${stats.missionCount}`} helper="LiÃ©es aux clients" />
         <StatCard label="Factures" value={`${stats.invoiceCount}`} helper="Historique client" />
       </div>
 
@@ -38,7 +40,7 @@ export default async function ClientsPage() {
             </p>
             <h2 className="mt-2 text-2xl font-black">Ajouter un client</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Les informations sont maintenant sauvegardées en base PostgreSQL.
+              Les informations sont maintenant sauvegardÃ©es en base PostgreSQL.
             </p>
           </div>
 
@@ -46,7 +48,7 @@ export default async function ClientsPage() {
             <input className="input" name="legalName" placeholder="Raison sociale *" required />
             <input className="input" name="contactName" placeholder="Contact" />
             <input className="input" name="email" type="email" placeholder="Email facturation" />
-            <input className="input" name="phone" placeholder="Téléphone" />
+            <input className="input" name="phone" placeholder="TÃ©lÃ©phone" />
             <input className="input" name="addressLine1" placeholder="Adresse *" required />
 
             <div className="grid gap-4 md:grid-cols-3">
@@ -62,8 +64,8 @@ export default async function ClientsPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <input className="input" name="vatNumber" placeholder="N° TVA intracommunautaire" />
-              <input className="input" name="paymentTermsDays" type="number" min="0" defaultValue="30" placeholder="Délai paiement" />
+              <input className="input" name="vatNumber" placeholder="NÂ° TVA intracommunautaire" />
+              <input className="input" name="paymentTermsDays" type="number" min="0" defaultValue="30" placeholder="DÃ©lai paiement" />
             </div>
 
             <button className="rounded-full bg-[var(--primary)] px-6 py-4 font-bold text-white shadow-xl transition hover:-translate-y-0.5">
@@ -78,7 +80,7 @@ export default async function ClientsPage() {
               <p className="text-sm font-bold uppercase tracking-[0.25em] text-[var(--primary)]">
                 Base clients
               </p>
-              <h2 className="mt-2 text-2xl font-black">Clients enregistrés</h2>
+              <h2 className="mt-2 text-2xl font-black">Clients enregistrÃ©s</h2>
             </div>
             <span className="badge bg-emerald-50 text-emerald-700">
               {clients.length} client{clients.length > 1 ? "s" : ""}
@@ -104,7 +106,7 @@ export default async function ClientsPage() {
                       <div className="mt-3 flex flex-wrap gap-2">
                         {client.siret && <span className="badge bg-slate-100 text-slate-700">SIRET : {client.siret}</span>}
                         {client.ape && <span className="badge bg-slate-100 text-slate-700">APE : {client.ape}</span>}
-                        <span className="badge bg-emerald-50 text-emerald-700">Créé le {formatDate(client.createdAt)}</span>
+                        <span className="badge bg-emerald-50 text-emerald-700">CrÃ©Ã© le {formatDate(client.createdAt)}</span>
                       </div>
                     </div>
 
@@ -126,7 +128,7 @@ export default async function ClientsPage() {
                       <input className="input" name="legalName" defaultValue={client.legalName} required />
                       <input className="input" name="contactName" defaultValue={client.contactName ?? ""} placeholder="Contact" />
                       <input className="input" name="email" type="email" defaultValue={client.email ?? ""} placeholder="Email" />
-                      <input className="input" name="phone" defaultValue={client.phone ?? ""} placeholder="Téléphone" />
+                      <input className="input" name="phone" defaultValue={client.phone ?? ""} placeholder="TÃ©lÃ©phone" />
                       <input className="input" name="addressLine1" defaultValue={client.addressLine1} required />
 
                       <div className="grid gap-4 md:grid-cols-3">
@@ -142,7 +144,7 @@ export default async function ClientsPage() {
                       </div>
 
                       <div className="grid gap-4 md:grid-cols-2">
-                        <input className="input" name="vatNumber" defaultValue={client.vatNumber ?? ""} placeholder="N° TVA" />
+                        <input className="input" name="vatNumber" defaultValue={client.vatNumber ?? ""} placeholder="NÂ° TVA" />
                         <input className="input" name="paymentTermsDays" type="number" min="0" defaultValue={client.paymentTermsDays} />
                       </div>
 
@@ -160,3 +162,4 @@ export default async function ClientsPage() {
     </AppShell>
   );
 }
+

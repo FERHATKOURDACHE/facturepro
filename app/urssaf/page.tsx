@@ -1,4 +1,5 @@
-import { requireUser } from "@/lib/require-auth";
+﻿import { requireUser } from "@/lib/require-auth";
+import { requireCompanyProfileCompleted } from "@/lib/onboarding";
 import { AppShell } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
 import { getUrssafTurnover } from "@/lib/urssaf-queries";
@@ -18,6 +19,7 @@ export default async function UrssafPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   await requireUser();
+  await requireCompanyProfileCompleted();
   const params = (await searchParams) ?? {};
   const activity = (firstValue(params.activity) ?? "SERVICE_BNC") as UrssafActivityCode;
   const start = firstValue(params.start) ?? "2026-05-01";
@@ -38,21 +40,21 @@ export default async function UrssafPage({
   return (
     <AppShell
       title="URSSAF"
-      subtitle="Estimation des cotisations à partir du chiffre d'affaires facturé."
+      subtitle="Estimation des cotisations Ã  partir du chiffre d'affaires facturÃ©."
     >
       <div className="grid gap-5 md:grid-cols-4">
-        <StatCard label="CA période" value={formatCurrency(estimate.turnover)} helper={`${invoices.length} facture(s)`} />
+        <StatCard label="CA pÃ©riode" value={formatCurrency(estimate.turnover)} helper={`${invoices.length} facture(s)`} />
         <StatCard label="Cotisations" value={formatCurrency(estimate.socialContributionAmount)} helper={`${(estimate.socialContributionRate * 100).toFixed(2)} %`} />
         <StatCard label="CFP" value={formatCurrency(estimate.cfpAmount)} helper={includeCfp ? `${(estimate.cfpRate * 100).toFixed(2)} %` : "Non incluse"} />
-        <StatCard label="Net estimé" value={formatCurrency(estimate.netBeforeIncomeTax)} helper="Avant impôt sur le revenu" />
+        <StatCard label="Net estimÃ©" value={formatCurrency(estimate.netBeforeIncomeTax)} helper="Avant impÃ´t sur le revenu" />
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
         <section className="card rounded-[2rem] p-6">
           <p className="text-sm font-bold uppercase tracking-[0.25em] text-[var(--primary)]">
-            Paramètres
+            ParamÃ¨tres
           </p>
-          <h2 className="mt-2 text-2xl font-black">Calculer une période</h2>
+          <h2 className="mt-2 text-2xl font-black">Calculer une pÃ©riode</h2>
 
           <form className="mt-6 grid gap-4">
             <div className="grid gap-4 md:grid-cols-2">
@@ -81,20 +83,20 @@ export default async function UrssafPage({
 
         <section className="card rounded-[2rem] p-6">
           <p className="text-sm font-bold uppercase tracking-[0.25em] text-[var(--primary)]">
-            Détail
+            DÃ©tail
           </p>
           <h2 className="mt-2 text-2xl font-black">Factures prises en compte</h2>
 
           {invoices.length === 0 ? (
             <div className="mt-6 rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center text-slate-600">
-              Aucune facture sur cette période.
+              Aucune facture sur cette pÃ©riode.
             </div>
           ) : (
             <div className="table-wrap mt-6">
               <table>
                 <thead>
                   <tr>
-                    <th>Numéro</th>
+                    <th>NumÃ©ro</th>
                     <th>Date</th>
                     <th>Statut</th>
                     <th>Total</th>
@@ -115,11 +117,12 @@ export default async function UrssafPage({
           )}
 
           <div className="mt-6 rounded-3xl bg-amber-50 p-5 text-sm leading-6 text-amber-900">
-            Cette estimation ne remplace pas la déclaration officielle. Les taux doivent rester configurables
-            car ils peuvent évoluer selon l'activité, l'année, l'ACRE, la CFP et les options fiscales.
+            Cette estimation ne remplace pas la dÃ©claration officielle. Les taux doivent rester configurables
+            car ils peuvent Ã©voluer selon l'activitÃ©, l'annÃ©e, l'ACRE, la CFP et les options fiscales.
           </div>
         </section>
       </div>
     </AppShell>
   );
 }
+
