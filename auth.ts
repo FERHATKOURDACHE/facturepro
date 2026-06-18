@@ -137,6 +137,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.name = dbUser.name ?? dbUser.email;
           token.email = dbUser.email;
           token.plan = dbUser.plan;
+          token.authProvider = "google";
         }
 
         return token;
@@ -145,6 +146,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id;
         token.plan = user.plan;
+        token.authProvider = account?.provider ?? "credentials";
       }
 
       return token;
@@ -154,6 +156,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         session.user.id = String(token.id);
         session.user.plan = String(token.plan ?? "FREE");
+        session.user.authProvider = String(token.authProvider ?? "credentials");
       }
 
       return session;
