@@ -1,5 +1,4 @@
-﻿
-"use server";
+﻿"use server";
 
 import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
@@ -83,5 +82,3 @@ export async function logoutAction() {
     redirectTo: "/connexion",
   });
 }
-
-

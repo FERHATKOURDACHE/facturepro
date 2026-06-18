@@ -1,5 +1,6 @@
 ﻿
 import Link from "next/link";
+import { GoogleOAuthButton } from "@/components/auth/GoogleOAuthButton";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
@@ -59,6 +60,14 @@ export default async function InscriptionPage({
             {errorMessage}
           </div>
         )}
+
+        <GoogleOAuthButton label="Créer mon compte avec Google" />
+
+        <div className="my-6 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.25em] text-slate-400">
+          <span className="h-px flex-1 bg-slate-200" />
+          ou
+          <span className="h-px flex-1 bg-slate-200" />
+        </div>
 
         <form action={registerAction} className="mt-6 space-y-4">
           <div>
