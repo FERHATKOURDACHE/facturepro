@@ -3,7 +3,9 @@ import {
   ArrowRight,
   BadgeCheck,
   BarChart3,
+  Bot,
   Building2,
+  Calculator,
   CheckCircle2,
   FileSpreadsheet,
   FileText,
@@ -18,40 +20,58 @@ const features = [
   {
     icon: Building2,
     title: "Clients centralisés",
-    text: "Enregistre tes clients avec leurs coordonnées, délais de paiement et informations de facturation.",
+    text: "Regroupe les coordonnées, délais de paiement, adresses et informations utiles pour facturer vite et proprement.",
   },
   {
     icon: Timer,
-    title: "Missions & heures",
-    text: "Suis tes prestations, horaires, taux, frais et lieux de mission depuis une seule interface.",
+    title: "Missions et heures",
+    text: "Suis tes prestations, horaires, lieux, taux, pauses et frais depuis une interface claire.",
   },
   {
     icon: FileText,
     title: "Factures automatiques",
-    text: "Génère tes factures à partir des missions validées, avec lignes, frais, déductions et mentions légales.",
+    text: "Génère des factures à partir des missions validées, avec lignes, frais, statuts et paiements.",
   },
   {
     icon: FileSpreadsheet,
-    title: "Exports PDF & Excel",
-    text: "Télécharge tes factures et feuilles de temps dans des formats propres, prêts à envoyer.",
+    title: "Exports PDF et Excel",
+    text: "Télécharge des factures et feuilles de temps propres, prêtes à envoyer à tes clients.",
+  },
+  {
+    icon: Calculator,
+    title: "Estimation URSSAF",
+    text: "Visualise ton chiffre d'affaires encaissé et prépare une estimation de cotisations avant déclaration.",
+  },
+  {
+    icon: Bot,
+    title: "Assistant IA",
+    text: "Transforme un texte brut ou un planning en missions structurées à vérifier avant import.",
   },
 ];
 
 const workflow = [
-  "Crée ton profil entreprise",
-  "Ajoute tes clients",
+  "Configure ton profil entreprise",
+  "Ajoute ou sélectionne ton client",
   "Saisis ou importe tes missions",
   "Valide les heures travaillées",
-  "Génère et exporte tes factures",
+  "Génère la facture PDF / Excel",
+  "Suis le paiement et prépare l'URSSAF",
 ];
 
 const audiences = [
-  "Auto-entrepreneurs",
+  "Micro-entrepreneurs",
   "Freelances",
-  "Intérimaires indépendants",
   "Prestataires terrain",
   "Consultants",
+  "Intérimaires indépendants",
   "Petites structures de service",
+];
+
+const proofCards = [
+  ["Clients", "Base propre pour facturer"],
+  ["Missions", "Heures et frais maîtrisés"],
+  ["Factures", "PDF, Excel et paiements"],
+  ["URSSAF", "CA encaissé lisible"],
 ];
 
 export function Landing() {
@@ -66,7 +86,7 @@ export function Landing() {
           <div>
             <p className="text-lg font-black tracking-tight">FacturePro</p>
             <p className="text-xs font-semibold text-slate-500">
-              Facturation SaaS
+              Facturation pour indépendants
             </p>
           </div>
         </Link>
@@ -74,36 +94,36 @@ export function Landing() {
         <div className="flex items-center gap-3">
           <Link
             href="/connexion"
-            className="hidden rounded-full border border-slate-200 bg-white/80 px-5 py-3 text-sm font-black text-slate-800 shadow-sm sm:inline-flex"
+            className="hidden rounded-full border border-slate-200 bg-white/80 px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-white sm:inline-flex"
           >
             Connexion
           </Link>
 
           <Link
-            href="/dashboard"
-            className="rounded-full bg-slate-950 px-6 py-3 text-sm font-black text-white shadow-xl shadow-slate-950/15"
+            href="/inscription"
+            className="rounded-full bg-slate-950 px-6 py-3 text-sm font-black text-white shadow-xl shadow-slate-950/15 transition hover:-translate-y-0.5"
           >
-            Ouvrir l’application
+            Créer un compte
           </Link>
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-7xl items-center gap-12 px-6 pb-20 pt-8 lg:grid-cols-[1.05fr_0.95fr]">
+      <section className="mx-auto grid max-w-7xl items-center gap-12 px-6 pb-20 pt-8 lg:grid-cols-[1.04fr_0.96fr]">
         <div>
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-4 py-2 text-sm font-black text-emerald-800 shadow-sm">
             <Sparkles size={18} />
-            Facturation, heures, frais et exports dans un seul outil
+            Clients, missions, factures, paiements, URSSAF et IA
           </div>
 
           <h1 className="max-w-5xl text-5xl font-black leading-[1.02] tracking-tight text-slate-950 md:text-7xl">
-            Gère tes missions et génère tes{" "}
-            <span className="gradient-title">factures</span> sans perdre de temps.
+            La facturation claire pour les{" "}
+            <span className="gradient-title">micro-entrepreneurs</span> et freelances.
           </h1>
 
           <p className="mt-7 max-w-2xl text-lg leading-8 text-slate-600">
-            FacturePro aide les indépendants à suivre leurs clients, leurs
-            heures, leurs frais, leurs factures et leurs paiements dans une
-            interface claire, moderne et professionnelle.
+            FacturePro centralise tes clients, tes missions, tes heures, tes
+            frais, tes factures, tes paiements et ton suivi URSSAF dans un outil
+            simple, moderne et professionnel.
           </p>
 
           <div className="mt-9 flex flex-col gap-4 sm:flex-row">
@@ -111,23 +131,19 @@ export function Landing() {
               href="/inscription"
               className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-7 py-4 font-black text-white shadow-2xl shadow-emerald-900/20 transition hover:-translate-y-1"
             >
-              Créer mon compte <ArrowRight size={18} />
+              Commencer gratuitement <ArrowRight size={18} />
             </Link>
 
             <Link
-              href="/dashboard"
-              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white/85 px-7 py-4 font-black text-slate-900 shadow-sm"
+              href="/connexion"
+              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white/85 px-7 py-4 font-black text-slate-900 shadow-sm transition hover:bg-white"
             >
-              Voir l’application
+              J'ai déjà un compte
             </Link>
           </div>
 
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">
-            {[
-              ["PDF / Excel", "Exports propres"],
-              ["URSSAF", "Estimation rapide"],
-              ["IA", "Extraction d’heures"],
-            ].map(([title, text]) => (
+          <div className="mt-8 grid gap-3 sm:grid-cols-4">
+            {proofCards.map(([title, text]) => (
               <div
                 key={title}
                 className="rounded-3xl border border-slate-200 bg-white/75 p-4 shadow-sm"
@@ -185,7 +201,7 @@ export function Landing() {
               <div className="rounded-3xl bg-amber-300/10 p-4">
                 <WalletCards className="text-amber-200" />
                 <p className="mt-3 text-sm font-bold text-amber-100">
-                  Suivi paiement et statut intégré.
+                  Paiement, statut et suivi encaissé intégrés.
                 </p>
               </div>
             </div>
@@ -199,15 +215,15 @@ export function Landing() {
             Fonctionnalités
           </p>
           <h2 className="mt-3 text-4xl font-black tracking-tight text-slate-950">
-            Tout ce qu’il faut pour facturer proprement
+            Tout ce qu'il faut pour facturer proprement
           </h2>
           <p className="mt-3 leading-7 text-slate-600">
-            L’objectif est simple : passer moins de temps sur l’administratif
+            L'objectif est simple : passer moins de temps sur l'administratif
             et garder une vision claire de ton activité.
           </p>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-4">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {features.map((feature) => {
             const Icon = feature.icon;
 
@@ -229,15 +245,27 @@ export function Landing() {
       <section className="mx-auto grid max-w-7xl gap-6 px-6 pb-20 lg:grid-cols-[0.9fr_1.1fr]">
         <div className="card rounded-[2rem] p-8">
           <p className="text-sm font-black uppercase tracking-[0.28em] text-[var(--primary)]">
-            Méthode
+            Parcours
           </p>
           <h2 className="mt-3 text-3xl font-black text-slate-950">
-            Un parcours simple en 5 étapes
+            Un workflow métier en 6 étapes
           </h2>
           <p className="mt-3 leading-7 text-slate-600">
-            FacturePro guide l’utilisateur depuis le profil entreprise jusqu’à
-            l’export final de la facture.
+            De la création du profil jusqu'au suivi URSSAF, l'application garde
+            une logique simple : client, mission, facture, paiement, déclaration.
           </p>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            {[
+              ["IA", "Importer un planning brut"],
+              ["URSSAF", "Préparer le CA encaissé"],
+            ].map(([title, text]) => (
+              <div key={title} className="rounded-3xl bg-slate-50 p-5">
+                <p className="font-black text-slate-950">{title}</p>
+                <p className="mt-1 text-sm leading-6 text-slate-600">{text}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="grid gap-3">
@@ -266,7 +294,7 @@ export function Landing() {
                 Pensé pour les indépendants et prestataires
               </h2>
               <p className="mt-3 leading-7 text-slate-600">
-                FacturePro s’adresse aux professionnels qui doivent suivre des
+                FacturePro s'adresse aux professionnels qui doivent suivre des
                 heures, des missions, des frais et produire des factures propres.
               </p>
             </div>
@@ -284,6 +312,40 @@ export function Landing() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="mx-auto grid max-w-7xl gap-5 px-6 pb-20 md:grid-cols-3">
+        {[
+          {
+            icon: ShieldCheck,
+            title: "Données organisées",
+            text: "Chaque client, mission, facture et paiement reste rattaché à ton espace.",
+          },
+          {
+            icon: BadgeCheck,
+            title: "Process professionnel",
+            text: "Les missions passent par un état brouillon, validation puis facturation.",
+          },
+          {
+            icon: BarChart3,
+            title: "Vision claire",
+            text: "Le dashboard, les paiements et l'URSSAF donnent une lecture rapide de l'activité.",
+          },
+        ].map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <article key={item.title} className="card rounded-[1.7rem] p-6">
+              <Icon className="text-[var(--primary)]" size={28} />
+              <h3 className="mt-4 text-xl font-black text-slate-950">
+                {item.title}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                {item.text}
+              </p>
+            </article>
+          );
+        })}
       </section>
 
       <section className="mx-auto max-w-7xl px-6 pb-24">
@@ -304,7 +366,7 @@ export function Landing() {
 
             <Link
               href="/inscription"
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-4 font-black text-slate-950"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-4 font-black text-slate-950 transition hover:-translate-y-1"
             >
               Créer un compte <ArrowRight size={18} />
             </Link>

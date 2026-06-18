@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FacturePro MVP",
-  description: "Application de facturation, feuilles de temps et gestion clients.",
+  title: "FacturePro - Facturation pour micro-entrepreneurs",
+  description:
+    "Application de facturation pour gérer clients, missions, heures, PDF, Excel, paiements, URSSAF et import IA.",
 };
 
 export default function RootLayout({
