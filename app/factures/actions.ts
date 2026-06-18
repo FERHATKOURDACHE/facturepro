@@ -1,5 +1,4 @@
-
-"use server";
+﻿"use server";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -14,6 +13,22 @@ import {
   toDecimal,
   type InvoicePreviewLine,
 } from "@/lib/invoice-calculations";
+
+const PAYMENT_METHODS = new Set<PaymentMethod>([
+  PaymentMethod.BANK_TRANSFER,
+  PaymentMethod.CARD,
+  PaymentMethod.CASH,
+  PaymentMethod.CHECK,
+  PaymentMethod.OTHER,
+]);
+
+const MANUAL_INVOICE_STATUSES = new Set<InvoiceStatus>([
+  InvoiceStatus.READY,
+  InvoiceStatus.SENT,
+  InvoiceStatus.OVERDUE,
+]);
+
+const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 function optionalString(value: FormDataEntryValue | null) {
   const stringValue = typeof value === "string" ? value.trim() : "";
@@ -30,7 +45,12 @@ function requiredString(formData: FormData, key: string) {
   return value.trim();
 }
 
-function numberFromForm(formData: FormData, key: string, defaultValue = 0) {
+function numberFromForm(
+  formData: FormData,
+  key: string,
+  defaultValue = 0,
+  options: { min?: number; max?: number } = {}
+) {
   const value = formData.get(key);
 
   if (typeof value !== "string" || value.trim().length === 0) {
@@ -41,14 +61,32 @@ function numberFromForm(formData: FormData, key: string, defaultValue = 0) {
   const numberValue = Number(normalized);
 
   if (Number.isNaN(numberValue)) {
-    throw new Error(`Le champ ${ key } doit être un nombre.`);
+    throw new Error(`Le champ ${key} doit être un nombre.`);
+  }
+
+  if (options.min !== undefined && numberValue < options.min) {
+    throw new Error(`Le champ ${key} est trop faible.`);
+  }
+
+  if (options.max !== undefined && numberValue > options.max) {
+    throw new Error(`Le champ ${key} est trop élevé.`);
   }
 
   return numberValue;
 }
 
 function dateFromInput(value: string, endOfDay = false) {
-  return new Date(`${value}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}Z`);
+  if (!ISO_DATE_REGEX.test(value)) {
+    throw new Error("Format de date invalide.");
+  }
+
+  const date = new Date(`${value}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}Z`);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("Date invalide.");
+  }
+
+  return date;
 }
 
 function addDays(date: Date, days: number) {
@@ -56,14 +94,6 @@ function addDays(date: Date, days: number) {
   clone.setUTCDate(clone.getUTCDate() + days);
   return clone;
 }
-
-const PAYMENT_METHODS = new Set<PaymentMethod>([
-  PaymentMethod.BANK_TRANSFER,
-  PaymentMethod.CARD,
-  PaymentMethod.CASH,
-  PaymentMethod.CHECK,
-  PaymentMethod.OTHER,
-]);
 
 function paymentMethodFromForm(formData: FormData) {
   const method =
@@ -74,6 +104,16 @@ function paymentMethodFromForm(formData: FormData) {
   }
 
   return method as PaymentMethod;
+}
+
+function invoiceStatusFromForm(formData: FormData) {
+  const status = requiredString(formData, "status") as InvoiceStatus;
+
+  if (!MANUAL_INVOICE_STATUSES.has(status)) {
+    throw new Error("Statut de facture non autorisé pour cette action.");
+  }
+
+  return status;
 }
 
 async function assertClientBelongsToOrganization(
@@ -109,6 +149,11 @@ export async function createInvoiceFromValidatedMissionsAction(
   const periodStart = dateFromInput(requiredString(formData, "periodStart"));
   const periodEnd = dateFromInput(requiredString(formData, "periodEnd"), true);
   const issueDate = dateFromInput(requiredString(formData, "issueDate"));
+
+  if (periodStart > periodEnd) {
+    throw new Error("La date de début de période doit être avant la date de fin.");
+  }
+
   const dueDate = addDays(issueDate, client.paymentTermsDays ?? 30);
 
   const customNumber = optionalString(formData.get("number"));
@@ -119,11 +164,34 @@ export async function createInvoiceFromValidatedMissionsAction(
       issueDate,
     }));
 
-  const paidHoursDeduction = numberFromForm(formData, "paidHoursDeduction", 0);
+  if (customNumber) {
+    const existingInvoiceNumber = await prisma.invoice.findFirst({
+      where: {
+        organizationId: organization.id,
+        number: customNumber,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (existingInvoiceNumber) {
+      throw new Error("Ce numéro de facture existe déjà.");
+    }
+  }
+
+  const paidHoursDeduction = numberFromForm(
+    formData,
+    "paidHoursDeduction",
+    0,
+    { min: 0, max: 10000 }
+  );
+
   const paidHoursDeductionRate = numberFromForm(
     formData,
     "paidHoursDeductionRate",
-    13
+    13,
+    { min: 0, max: 10000 }
   );
 
   const deductionLabel =
@@ -143,6 +211,10 @@ export async function createInvoiceFromValidatedMissionsAction(
           isDefault: true,
         },
       });
+
+  if (profileId && !profile) {
+    throw new Error("Profil émetteur introuvable pour cette organisation.");
+  }
 
   const legalNotice =
     optionalString(formData.get("legalNotice")) ??
@@ -197,163 +269,201 @@ export async function createInvoiceFromValidatedMissionsAction(
     (a, b) => a.rate - b.rate
   )) {
     lines.push({
-      label: `Prestations de services - ${
-  group.rate
-  .toFixed(2)
-  .replace(".", ",")
-} €/h`,
-description: `${missions.length} mission(s) validée(s) sur la période`,
-  quantity: group.quantity,
-    unit: "HOUR",
+      label: `Prestations de services - ${group.rate
+        .toFixed(2)
+        .replace(".", ",")} €/h`,
+      description: `${missions.length} mission(s) validée(s) sur la période`,
+      quantity: group.quantity,
+      unit: "HOUR",
       unitPrice: group.rate,
-        total: group.amount,
+      total: group.amount,
     });
   }
 
-const expenseGroups = new Map<string, { label: string; amount: number }>();
+  const expenseGroups = new Map<string, { label: string; amount: number }>();
 
-for (const mission of missions) {
-  for (const expense of mission.expenses) {
-    const existing = expenseGroups.get(expense.label) ?? {
-      label: expense.label,
-      amount: 0,
-    };
+  for (const mission of missions) {
+    for (const expense of mission.expenses) {
+      const existing = expenseGroups.get(expense.label) ?? {
+        label: expense.label,
+        amount: 0,
+      };
 
-    existing.amount = roundMoney(existing.amount + Number(expense.amount));
-    expenseGroups.set(expense.label, existing);
+      existing.amount = roundMoney(existing.amount + Number(expense.amount));
+      expenseGroups.set(expense.label, existing);
+    }
   }
-}
 
-for (const expense of expenseGroups.values()) {
-  lines.push({
-    label: expense.label,
-    description: "Frais liés aux missions de la période",
-    quantity: 1,
-    unit: "FIXED_PRICE",
-    unitPrice: expense.amount,
-    total: expense.amount,
-  });
-}
+  for (const expense of expenseGroups.values()) {
+    lines.push({
+      label: expense.label,
+      description: "Frais liés aux missions de la période",
+      quantity: 1,
+      unit: "FIXED_PRICE",
+      unitPrice: expense.amount,
+      total: expense.amount,
+    });
+  }
 
-if (paidHoursDeduction > 0) {
-  lines.push({
-    label: deductionLabel,
-    description: `${paidHoursDeduction} heure(s) déjà payée(s) × ${paidHoursDeductionRate
-      .toFixed(2)
-      .replace(".", ",")} €/h`,
-    quantity: paidHoursDeduction,
-    unit: "HOUR",
-    unitPrice: -paidHoursDeductionRate,
-    total: -roundMoney(paidHoursDeduction * paidHoursDeductionRate),
-  });
-}
+  if (paidHoursDeduction > 0) {
+    lines.push({
+      label: deductionLabel,
+      description: `${paidHoursDeduction} heure(s) déjà payée(s) × ${paidHoursDeductionRate
+        .toFixed(2)
+        .replace(".", ",")} €/h`,
+      quantity: paidHoursDeduction,
+      unit: "HOUR",
+      unitPrice: -paidHoursDeductionRate,
+      total: -roundMoney(paidHoursDeduction * paidHoursDeductionRate),
+    });
+  }
 
-const totals = calculateInvoiceTotals(lines, 0);
+  const totals = calculateInvoiceTotals(lines, 0);
 
-if (totals.total < 0) {
-  throw new Error("Le total de la facture ne peut pas être négatif.");
-}
+  if (totals.total < 0) {
+    throw new Error("Le total de la facture ne peut pas être négatif.");
+  }
 
-await prisma.$transaction(async (tx) => {
-  const invoice = await tx.invoice.create({
-    data: {
-      organizationId: organization.id,
-      profileId: profile?.id,
-      clientId,
-      number,
-      issueDate,
-      dueDate,
-      periodStart,
-      periodEnd,
-      status: "READY",
-      currency: organization.currency,
-      subtotal: toDecimal(totals.subtotal),
-      vatRate: toDecimal(totals.vatRate),
-      vatAmount: toDecimal(totals.vatAmount),
-      total: toDecimal(totals.total),
-      paidHoursDeduction: toDecimal(paidHoursDeduction),
-      paidAmountDeduction: toDecimal(
-        roundMoney(paidHoursDeduction * paidHoursDeductionRate)
-      ),
-      notes: optionalString(formData.get("notes")),
-      legalNotice,
-      lines: {
-        create: lines.map((line, index) => ({
-          label: line.label,
-          description: line.description,
-          quantity: toDecimal(line.quantity),
-          unit: line.unit,
-          unitPrice: toDecimal(line.unitPrice),
-          vatRate: toDecimal(0),
-          total: toDecimal(line.total),
-          lineOrder: index + 1,
-        })),
-      },
-    },
-  });
-
-  await tx.mission.updateMany({
-    where: {
-      id: {
-        in: missions.map((mission) => mission.id),
-      },
-      organizationId: organization.id,
-    },
-    data: {
-      invoiceId: invoice.id,
-      status: "INVOICED",
-    },
-  });
-
-  await tx.expense.updateMany({
-    where: {
-      missionId: {
-        in: missions.map((mission) => mission.id),
-      },
-      organizationId: organization.id,
-    },
-    data: {
-      invoiceId: invoice.id,
-    },
-  });
-
-  await tx.auditLog.create({
-    data: {
-      organizationId: organization.id,
-      action: "invoice.created_from_missions",
-      entityType: "Invoice",
-      entityId: invoice.id,
-      metadata: {
-        number,
+  await prisma.$transaction(async (tx) => {
+    const invoice = await tx.invoice.create({
+      data: {
+        organizationId: organization.id,
+        profileId: profile?.id,
         clientId,
-        missionCount: missions.length,
-        total: totals.total,
-        paidHoursDeduction,
+        number,
+        issueDate,
+        dueDate,
+        periodStart,
+        periodEnd,
+        status: "READY",
+        currency: organization.currency,
+        subtotal: toDecimal(totals.subtotal),
+        vatRate: toDecimal(totals.vatRate),
+        vatAmount: toDecimal(totals.vatAmount),
+        total: toDecimal(totals.total),
+        paidHoursDeduction: toDecimal(paidHoursDeduction),
+        paidAmountDeduction: toDecimal(
+          roundMoney(paidHoursDeduction * paidHoursDeductionRate)
+        ),
+        notes: optionalString(formData.get("notes")),
+        legalNotice,
+        lines: {
+          create: lines.map((line, index) => ({
+            label: line.label,
+            description: line.description,
+            quantity: toDecimal(line.quantity),
+            unit: line.unit,
+            unitPrice: toDecimal(line.unitPrice),
+            vatRate: toDecimal(0),
+            total: toDecimal(line.total),
+            lineOrder: index + 1,
+          })),
+        },
       },
-    },
+    });
+
+    await tx.mission.updateMany({
+      where: {
+        id: {
+          in: missions.map((mission) => mission.id),
+        },
+        organizationId: organization.id,
+      },
+      data: {
+        invoiceId: invoice.id,
+        status: "INVOICED",
+      },
+    });
+
+    await tx.expense.updateMany({
+      where: {
+        missionId: {
+          in: missions.map((mission) => mission.id),
+        },
+        organizationId: organization.id,
+      },
+      data: {
+        invoiceId: invoice.id,
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        organizationId: organization.id,
+        action: "invoice.created_from_missions",
+        entityType: "Invoice",
+        entityId: invoice.id,
+        metadata: {
+          number,
+          clientId,
+          missionCount: missions.length,
+          total: totals.total,
+          paidHoursDeduction,
+        },
+      },
+    });
   });
-});
 
-revalidatePath("/factures");
-revalidatePath("/missions");
-revalidatePath("/dashboard");
+  revalidatePath("/factures");
+  revalidatePath("/missions");
+  revalidatePath("/dashboard");
 
-redirect("/factures?saved=created");
+  redirect("/factures?saved=created");
 }
 
 export async function updateInvoiceStatusAction(formData: FormData) {
   const organization = await getCurrentOrganization();
   const id = requiredString(formData, "id");
-  const status = requiredString(formData, "status") as InvoiceStatus;
+  const status = invoiceStatusFromForm(formData);
 
-  await prisma.invoice.update({
+  const invoice = await prisma.invoice.findFirst({
     where: {
       id,
       organizationId: organization.id,
     },
-    data: {
-      status,
+    select: {
+      id: true,
+      status: true,
     },
+  });
+
+  if (!invoice) {
+    throw new Error("Facture introuvable.");
+  }
+
+  if (
+    invoice.status === "PAID" ||
+    invoice.status === "PARTIALLY_PAID" ||
+    invoice.status === "CANCELLED"
+  ) {
+    throw new Error(
+      "Modification manuelle du statut bloquée pour une facture payée, partiellement payée ou annulée."
+    );
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.invoice.update({
+      where: {
+        id,
+        organizationId: organization.id,
+      },
+      data: {
+        status,
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        organizationId: organization.id,
+        action: "invoice.status_updated",
+        entityType: "Invoice",
+        entityId: id,
+        metadata: {
+          previousStatus: invoice.status,
+          nextStatus: status,
+        },
+      },
+    });
   });
 
   revalidatePath("/factures");
@@ -372,17 +482,16 @@ export async function updateInvoiceStatusAction(formData: FormData) {
 export async function registerInvoicePaymentAction(formData: FormData) {
   const organization = await getCurrentOrganization();
   const id = requiredString(formData, "id");
-  const amount = numberFromForm(formData, "amount", 0);
+  const amount = numberFromForm(formData, "amount", 0, {
+    min: 0.01,
+    max: 1000000,
+  });
   const method = paymentMethodFromForm(formData);
   const paidAtInput = optionalString(formData.get("paidAt"));
   const paidAt = paidAtInput ? dateFromInput(paidAtInput) : new Date();
 
   if (Number.isNaN(paidAt.getTime())) {
     throw new Error("Date d'encaissement invalide.");
-  }
-
-  if (amount <= 0) {
-    throw new Error("Le montant du paiement doit être supérieur à zéro.");
   }
 
   const invoice = await prisma.invoice.findFirst({
@@ -398,6 +507,10 @@ export async function registerInvoicePaymentAction(formData: FormData) {
 
   if (invoice.status === "CANCELLED") {
     throw new Error("Impossible d'enregistrer un paiement sur une facture annulée.");
+  }
+
+  if (invoice.status === "PAID") {
+    throw new Error("Cette facture est déjà entièrement payée.");
   }
 
   const invoiceTotal = Number(invoice.total);
@@ -416,6 +529,10 @@ export async function registerInvoicePaymentAction(formData: FormData) {
     const alreadyPaid = Number(paidTotalBefore._sum.amount ?? 0);
     const remainingAmount = roundMoney(invoiceTotal - alreadyPaid);
     const totalAfterPayment = roundMoney(alreadyPaid + amount);
+    const nextStatus =
+      totalAfterPayment >= invoiceTotal
+        ? InvoiceStatus.PAID
+        : InvoiceStatus.PARTIALLY_PAID;
 
     if (remainingAmount <= 0) {
       throw new Error("Cette facture est déjà entièrement payée.");
@@ -429,7 +546,7 @@ export async function registerInvoicePaymentAction(formData: FormData) {
       );
     }
 
-    await tx.payment.create({
+    const payment = await tx.payment.create({
       data: {
         organizationId: organization.id,
         invoiceId: id,
@@ -447,7 +564,23 @@ export async function registerInvoicePaymentAction(formData: FormData) {
         organizationId: organization.id,
       },
       data: {
-        status: totalAfterPayment >= invoiceTotal ? "PAID" : "PARTIALLY_PAID",
+        status: nextStatus,
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        organizationId: organization.id,
+        action: "invoice.payment_registered",
+        entityType: "Payment",
+        entityId: payment.id,
+        metadata: {
+          invoiceId: id,
+          amount,
+          method,
+          paidAt: paidAt.toISOString(),
+          nextInvoiceStatus: nextStatus,
+        },
       },
     });
   });
@@ -468,8 +601,9 @@ export async function cancelInvoiceAction(formData: FormData) {
       id,
       organizationId: organization.id,
     },
-    include: {
-      missions: true,
+    select: {
+      id: true,
+      status: true,
     },
   });
 
@@ -481,6 +615,10 @@ export async function cancelInvoiceAction(formData: FormData) {
     throw new Error(
       "Impossible d'annuler une facture déjà payée ou partiellement payée."
     );
+  }
+
+  if (invoice.status === "CANCELLED") {
+    throw new Error("Cette facture est déjà annulée.");
   }
 
   await prisma.$transaction(async (tx) => {
@@ -514,6 +652,18 @@ export async function cancelInvoiceAction(formData: FormData) {
         status: "CANCELLED",
       },
     });
+
+    await tx.auditLog.create({
+      data: {
+        organizationId: organization.id,
+        action: "invoice.cancelled",
+        entityType: "Invoice",
+        entityId: id,
+        metadata: {
+          previousStatus: invoice.status,
+        },
+      },
+    });
   });
 
   revalidatePath("/factures");
@@ -522,4 +672,3 @@ export async function cancelInvoiceAction(formData: FormData) {
 
   redirect("/factures?saved=cancelled");
 }
-
