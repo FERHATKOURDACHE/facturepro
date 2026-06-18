@@ -1,5 +1,4 @@
-
-import type { ReactNode } from "react";
+﻿import type { ReactNode } from "react";
 import Link from "next/link";
 import {
   BarChart3,
@@ -14,6 +13,7 @@ import {
   UserCircle,
   LogOut,
   Crown,
+  Sparkles,
 } from "lucide-react";
 
 import { auth } from "@/auth";
@@ -43,20 +43,36 @@ export async function AppShell({
   const session = await auth();
 
   return (
-    <main className="min-h-screen">
-      <aside className="fixed left-0 top-0 hidden h-screen w-72 border-r border-emerald-900/10 bg-white/75 p-5 backdrop-blur-2xl lg:block">
-        <Link href="/" className="mb-9 flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--primary)] text-lg font-black text-white">
+    <main className="min-h-screen bg-[var(--background)] text-slate-950">
+      <aside className="fixed left-0 top-0 hidden h-screen w-72 border-r border-white/10 bg-slate-950 p-5 text-white shadow-2xl lg:block">
+        <Link href="/" className="group mb-7 flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-700 text-lg font-black text-white shadow-lg shadow-emerald-950/30 transition group-hover:scale-105">
             FP
           </div>
 
           <div>
-            <p className="font-black">FacturePro</p>
-            <p className="text-xs text-slate-500">SaaS facturation</p>
+            <p className="text-lg font-black tracking-tight">FacturePro</p>
+            <p className="text-xs font-semibold text-emerald-200/80">
+              Facturation SaaS
+            </p>
           </div>
         </Link>
 
-        <nav className="space-y-2">
+        <div className="mb-5 rounded-[1.7rem] border border-white/10 bg-white/[0.06] p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-400/15 text-emerald-200">
+              <Sparkles size={20} />
+            </div>
+            <div>
+              <p className="text-sm font-black">Espace professionnel</p>
+              <p className="mt-1 text-xs leading-5 text-slate-300">
+                Clients, missions, factures et URSSAF au même endroit.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <nav className="space-y-1.5">
           {nav.map((item) => {
             const Icon = item.icon;
 
@@ -64,9 +80,11 @@ export async function AppShell({
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex items-center gap-3 rounded-2xl px-4 py-3 font-semibold text-slate-700 transition hover:bg-emerald-50 hover:text-[var(--primary)]"
+                className="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold text-slate-300 transition hover:bg-white/10 hover:text-white"
               >
-                <Icon size={19} />
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.06] text-emerald-200 transition group-hover:bg-emerald-400/15">
+                  <Icon size={18} />
+                </span>
                 {item.label}
               </Link>
             );
@@ -75,29 +93,29 @@ export async function AppShell({
 
         <div className="absolute bottom-5 left-5 right-5 space-y-3">
           {session?.user ? (
-            <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+            <div className="rounded-[1.7rem] border border-white/10 bg-white/[0.07] p-4 shadow-2xl shadow-black/20">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-[var(--primary)]">
-                  <UserCircle size={22} />
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-[var(--primary)]">
+                  <UserCircle size={24} />
                 </div>
 
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-black text-slate-950">
+                  <p className="truncate text-sm font-black text-white">
                     {session.user.name ?? "Utilisateur"}
                   </p>
-                  <p className="truncate text-xs text-slate-500">
+                  <p className="truncate text-xs text-slate-300">
                     {session.user.email}
                   </p>
                 </div>
               </div>
 
-              <div className="mt-3 flex items-center justify-between rounded-2xl bg-amber-50 px-3 py-2">
-                <span className="flex items-center gap-2 text-xs font-black text-amber-700">
+              <div className="mt-3 flex items-center justify-between rounded-2xl bg-amber-300/15 px-3 py-2">
+                <span className="flex items-center gap-2 text-xs font-black text-amber-200">
                   <Crown size={15} />
                   Plan
                 </span>
 
-                <span className="text-xs font-black text-amber-800">
+                <span className="text-xs font-black text-amber-100">
                   {session.user.plan ?? "FREE"}
                 </span>
               </div>
@@ -105,7 +123,7 @@ export async function AppShell({
               <form action={logoutAction} className="mt-3">
                 <button
                   type="submit"
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 transition hover:bg-red-100"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-500/15 px-4 py-3 text-sm font-bold text-red-100 transition hover:bg-red-500/25"
                 >
                   <LogOut size={17} />
                   Se déconnecter
@@ -113,7 +131,7 @@ export async function AppShell({
               </form>
             </div>
           ) : (
-            <div className="rounded-3xl bg-slate-950 p-5 text-white">
+            <div className="rounded-[1.7rem] border border-white/10 bg-white/[0.07] p-5">
               <BarChart3 className="mb-4 text-amber-300" />
 
               <p className="font-black">Bienvenue</p>
@@ -134,41 +152,65 @@ export async function AppShell({
       </aside>
 
       <section className="lg:pl-72">
-        <header className="sticky top-0 z-10 border-b border-emerald-900/10 bg-white/70 px-6 py-5 backdrop-blur-2xl">
-          <div className="mx-auto flex max-w-7xl flex-col justify-between gap-4 md:flex-row md:items-center">
-            <div>
-              <p className="text-sm font-bold uppercase tracking-[0.28em] text-[var(--primary)]">
-                FacturePro
-              </p>
+        <header className="sticky top-0 z-20 border-b border-white/70 bg-white/75 px-4 py-4 shadow-sm backdrop-blur-2xl sm:px-6">
+          <div className="mx-auto max-w-7xl">
+            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.3em] text-[var(--primary)]">
+                  FacturePro
+                </p>
 
-              <h1 className="text-3xl font-black tracking-tight">{title}</h1>
+                <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
+                  {title}
+                </h1>
 
-              <p className="mt-1 text-slate-600">{subtitle}</p>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 md:text-base">
+                  {subtitle}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                {session?.user && (
+                  <Link
+                    href="/compte"
+                    className="rounded-full border border-emerald-100 bg-emerald-50 px-5 py-3 text-sm font-black text-[var(--primary)] transition hover:bg-emerald-100"
+                  >
+                    Mon compte
+                  </Link>
+                )}
+
+                <Link
+                  href="/factures"
+                  className="w-fit rounded-full bg-slate-950 px-6 py-3 text-sm font-black text-white shadow-xl shadow-slate-950/15 transition hover:-translate-y-0.5 hover:bg-slate-800"
+                >
+                  Créer une facture
+                </Link>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              {session?.user && (
-                <Link
-                  href="/compte"
-                  className="rounded-full bg-emerald-50 px-5 py-3 text-sm font-bold text-[var(--primary)]"
-                >
-                  Mon compte
-                </Link>
-              )}
+            <div className="mt-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+              {nav.map((item) => {
+                const Icon = item.icon;
 
-              <Link
-                href="/factures"
-                className="w-fit rounded-full bg-slate-950 px-6 py-3 font-bold text-white"
-              >
-                Créer une facture
-              </Link>
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700 shadow-sm"
+                  >
+                    <Icon size={15} />
+                    {item.label}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </header>
 
-        <div className="mx-auto max-w-7xl px-6 py-8">{children}</div>
+        <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:py-9">
+          {children}
+        </div>
       </section>
     </main>
   );
 }
-
