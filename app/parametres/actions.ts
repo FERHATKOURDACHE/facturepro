@@ -128,5 +128,7 @@ export async function updateSettingsAction(formData: FormData) {
   if (redirectTo && redirectTo.startsWith("/")) {
     redirect(redirectTo);
   }
+
+  redirect("/parametres?saved=1");
 }
 

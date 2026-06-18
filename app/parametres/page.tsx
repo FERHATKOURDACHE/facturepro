@@ -7,6 +7,7 @@ import { updateSettingsAction } from "./actions";
 type ParametresPageProps = {
   searchParams?: Promise<{
     onboarding?: string;
+    saved?: string;
   }>;
 };
 
@@ -29,6 +30,7 @@ export default async function ParametresPage({
 
   const params = await searchParams;
   const onboardingRequired = params?.onboarding === "required";
+  const settingsSaved = params?.saved === "1" && !onboardingRequired;
 
   const profile =
     (await prisma.companyProfile.findFirst({
@@ -148,6 +150,23 @@ export default async function ParametresPage({
                   ))}
                 </div>
               </div>
+            </div>
+          </section>
+        )}
+
+        {settingsSaved && (
+          <section className="rounded-[2rem] border border-emerald-200 bg-emerald-50 p-5 text-emerald-900">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-lg font-black">Paramètres enregistrés</p>
+                <p className="mt-1 text-sm leading-6">
+                  Les informations de ton profil entreprise ont bien été mises à jour.
+                </p>
+              </div>
+
+              <span className="w-fit rounded-full bg-white px-4 py-2 text-sm font-black text-emerald-700 ring-1 ring-emerald-100">
+                Sauvegarde OK
+              </span>
             </div>
           </section>
         )}
