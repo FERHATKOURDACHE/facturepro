@@ -22,8 +22,8 @@ export default async function UrssafPage({
   await requireCompanyProfileCompleted();
   const params = (await searchParams) ?? {};
   const activity = (firstValue(params.activity) ?? "SERVICE_BNC") as UrssafActivityCode;
-  const start = firstValue(params.start) ?? "2026-05-01";
-  const end = firstValue(params.end) ?? "2026-05-31";
+  const start = firstValue(params.start) ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+  const end = firstValue(params.end) ?? new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10);
   const includeCfp = firstValue(params.cfp) === "on";
 
   const { invoices, turnover } = await getUrssafTurnover({
@@ -125,4 +125,5 @@ export default async function UrssafPage({
     </AppShell>
   );
 }
+
 

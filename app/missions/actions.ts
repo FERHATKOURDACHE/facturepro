@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
@@ -36,7 +36,7 @@ function numberFromForm(formData: FormData, key: string, defaultValue = 0) {
   const numberValue = Number(normalized);
 
   if (Number.isNaN(numberValue)) {
-    throw new Error(`Le champ ${key} doit être un nombre.`);
+    throw new Error(`Le champ ${key} doit Ãªtre un nombre.`);
   }
 
   return numberValue;
@@ -104,7 +104,7 @@ export async function createMissionAction(formData: FormData) {
           label: optionalString(formData.get("fuelLabel")) ?? "Frais carburant",
           amount: toDecimal(fuelAmount),
           expenseDate: new Date(`${date}T00:00:00.000Z`),
-          notes: "Frais ajouté depuis la mission.",
+          notes: "Frais ajoutÃ© depuis la mission.",
         },
       });
     }
@@ -213,7 +213,7 @@ export async function deleteMissionAction(formData: FormData) {
   }
 
   if (mission.invoiceId) {
-    throw new Error("Cette mission est déjà liée à une facture. Suppression bloquée.");
+    throw new Error("Cette mission est dÃ©jÃ  liÃ©e Ã  une facture. Suppression bloquÃ©e.");
   }
 
   await prisma.mission.delete({
@@ -228,104 +228,4 @@ export async function deleteMissionAction(formData: FormData) {
   revalidatePath("/factures");
 }
 
-export async function seedMayMissionsAction() {
-  const organization = await getCurrentOrganization();
 
-  const client = await prisma.client.findFirst({
-    where: {
-      organizationId: organization.id,
-      legalName: {
-        contains: "TALENT PRO",
-        mode: "insensitive",
-      },
-    },
-  });
-
-  if (!client) {
-    throw new Error("Ajoute d'abord le client TALENT PRO SOLUTION intérim.");
-  }
-
-  const existingCount = await prisma.mission.count({
-    where: {
-      organizationId: organization.id,
-      date: {
-        gte: new Date("2026-05-01T00:00:00.000Z"),
-        lte: new Date("2026-05-31T23:59:59.999Z"),
-      },
-    },
-  });
-
-  if (existingCount > 0) {
-    throw new Error("Les missions de mai existent déjà en base.");
-  }
-
-  const rows = [
-    ["2026-05-02", "06:30", "12:30", "Carrefour Market Boulogne", 13, 0],
-    ["2026-05-02", "13:30", "20:00", "Carrefour Market Ivry-sur-Seine", 13, 0],
-    ["2026-05-03", "06:30", "12:30", "Carrefour Market Boulogne", 13, 0],
-    ["2026-05-04", "06:30", "12:30", "Carrefour Market Boulogne", 13, 0],
-    ["2026-05-05", "06:30", "12:30", "Carrefour Market Boulogne", 13, 0],
-    ["2026-05-06", "07:00", "13:00", "Carrefour Étampes 91150", 13, 50],
-    ["2026-05-07", "07:00", "13:00", "Carrefour Étampes 91150", 13, 0],
-    ["2026-05-08", "07:00", "13:00", "Carrefour Étampes 91150", 13, 0],
-    ["2026-05-09", "07:00", "13:00", "Carrefour Étampes 91150", 13, 0],
-    ["2026-05-11", "06:30", "12:30", "Carrefour Market Boulogne", 13, 0],
-    ["2026-05-12", "06:30", "12:30", "Carrefour Market Boulogne", 13, 0],
-    ["2026-05-13", "06:30", "12:30", "Carrefour Market Boulogne", 13, 0],
-    ["2026-05-14", "06:30", "12:30", "Carrefour Market Boulogne", 13, 0],
-    ["2026-05-15", "06:30", "12:30", "Carrefour Market Boulogne", 13, 0],
-    ["2026-05-16", "06:30", "12:30", "Carrefour Market Boulogne", 13, 0],
-    ["2026-05-17", "06:30", "12:30", "Carrefour Market Boulogne", 13, 0],
-    ["2026-05-23", "06:30", "12:30", "Carrefour Market Boulogne", 13, 0],
-    ["2026-05-25", "06:30", "12:30", "Carrefour Market Boulogne", 13, 0],
-    ["2026-05-26", "06:30", "12:30", "Carrefour Market Boulogne", 13, 0],
-    ["2026-05-27", "06:30", "12:30", "Carrefour Market Boulogne", 16, 0],
-    ["2026-05-28", "06:30", "12:30", "Carrefour Market Boulogne", 13, 0],
-    ["2026-05-29", "06:30", "12:30", "Carrefour Market Boulogne", 13, 0],
-    ["2026-05-29", "13:30", "18:30", "Carrefour Market Boulogne", 13, 0],
-    ["2026-05-30", "06:30", "12:30", "Carrefour Market Boulogne", 13, 0],
-  ] as const;
-
-  await prisma.$transaction(async (tx) => {
-    for (const [date, startTime, endTime, locationName, rate, fuelAmount] of rows) {
-      const quantityHours = calculateHours({
-        startTime,
-        endTime,
-      });
-
-      const mission = await tx.mission.create({
-        data: {
-          organizationId: organization.id,
-          clientId: client.id,
-          date: new Date(`${date}T00:00:00.000Z`),
-          startTime: dateAndTimeToUtcDate(date, startTime),
-          endTime: dateAndTimeToUtcDate(date, endTime),
-          title: "Prestation magasin",
-          locationName,
-          hourlyRate: new Prisma.Decimal(rate),
-          quantityHours: new Prisma.Decimal(quantityHours),
-          status: "VALIDATED",
-          notes: rate === 16 ? "Taux exceptionnel à 16 €/h" : null,
-        },
-      });
-
-      if (fuelAmount > 0) {
-        await tx.expense.create({
-          data: {
-            organizationId: organization.id,
-            missionId: mission.id,
-            type: "FUEL",
-            label: "Frais essence Étampes",
-            amount: new Prisma.Decimal(fuelAmount),
-            expenseDate: new Date(`${date}T00:00:00.000Z`),
-            notes: "Frais carburant demandé pour Étampes 91150.",
-          },
-        });
-      }
-    }
-  });
-
-  revalidatePath("/missions");
-  revalidatePath("/dashboard");
-  revalidatePath("/factures");
-}

@@ -1,4 +1,4 @@
-
+﻿
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -17,11 +17,11 @@ function getErrorMessage(error?: string) {
   if (error === "missing_fields") return "Tous les champs sont obligatoires.";
 
   if (error === "password_too_short") {
-    return "Le mot de passe doit contenir au moins 8 caractères.";
+    return "Le mot de passe doit contenir au moins 8 caractÃ¨res.";
   }
 
   if (error === "email_already_used") {
-    return "Un compte existe déjà avec cet email.";
+    return "Un compte existe dÃ©jÃ  avec cet email.";
   }
 
   return null;
@@ -47,7 +47,7 @@ export default async function InscriptionPage({
         </p>
 
         <h1 className="mt-3 text-3xl font-black text-slate-950">
-          Créer un compte
+          CrÃ©er un compte
         </h1>
 
         <p className="mt-2 text-sm leading-6 text-slate-600">
@@ -68,7 +68,7 @@ export default async function InscriptionPage({
               type="text"
               required
               className="input mt-2"
-              placeholder="Ferhat Kourdache"
+              placeholder="Votre nom"
             />
           </div>
 
@@ -93,7 +93,7 @@ export default async function InscriptionPage({
               required
               minLength={8}
               className="input mt-2"
-              placeholder="Minimum 8 caractères"
+              placeholder="Minimum 8 caractÃ¨res"
             />
           </div>
 
@@ -101,12 +101,12 @@ export default async function InscriptionPage({
             type="submit"
             className="w-full rounded-full bg-[var(--primary)] px-6 py-4 font-bold text-white shadow-xl"
           >
-            Créer mon compte
+            CrÃ©er mon compte
           </button>
         </form>
 
         <p className="mt-6 text-center text-sm text-slate-600">
-          Déjà un compte ?{" "}
+          DÃ©jÃ  un compte ?{" "}
           <Link href="/connexion" className="font-bold text-[var(--primary)]">
             Se connecter
           </Link>
@@ -115,4 +115,5 @@ export default async function InscriptionPage({
     </main>
   );
 }
+
 

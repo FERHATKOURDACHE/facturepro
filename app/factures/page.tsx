@@ -113,25 +113,24 @@ export default async function FacturesPage() {
               </select>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <input className="input" name="periodStart" type="date" defaultValue="2026-05-01" required />
-                <input className="input" name="periodEnd" type="date" defaultValue="2026-05-31" required />
+                <input className="input" name="periodStart" type="date"  required />
+                <input className="input" name="periodEnd" type="date"  required />
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <input className="input" name="issueDate" type="date" defaultValue="2026-05-31" required />
+                <input className="input" name="issueDate" type="date"  required />
                 <input className="input" name="number" placeholder="NumÃ©ro manuel, sinon auto" />
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <input className="input" name="paidHoursDeduction" type="number" min="0" step="0.01" defaultValue="65" placeholder="Heures dÃ©jÃ  payÃ©es" />
-                <input className="input" name="paidHoursDeductionRate" type="number" min="0" step="0.01" defaultValue="13" placeholder="Taux de dÃ©duction" />
+                <input className="input" name="paidHoursDeduction" type="number" min="0" step="0.01" defaultValue="0" placeholder="Heures dÃ©jÃ  payÃ©es" />
+                <input className="input" name="paidHoursDeductionRate" type="number" min="0" step="0.01" defaultValue="0" placeholder="Taux de dÃ©duction" />
               </div>
 
               <input
                 className="input"
                 name="deductionLabel"
-                defaultValue="DÃ©duction des 65 heures dÃ©jÃ  rÃ©glÃ©es"
-                placeholder="LibellÃ© dÃ©duction"
+placeholder="LibellÃ© dÃ©duction"
               />
 
               <textarea
@@ -323,4 +322,6 @@ export default async function FacturesPage() {
     </AppShell>
   );
 }
+
+
 

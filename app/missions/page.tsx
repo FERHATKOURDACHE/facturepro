@@ -6,7 +6,6 @@ import {
   createMissionAction,
   deleteMissionAction,
   draftMissionAction,
-  seedMayMissionsAction,
   updateMissionAction,
   validateMissionAction,
 } from "@/app/missions/actions";
@@ -121,12 +120,6 @@ export default async function MissionsPage() {
               </button>
             </form>
           )}
-
-          <form action={seedMayMissionsAction} className="mt-4">
-            <button className="w-full rounded-full border border-emerald-200 bg-emerald-50 px-6 py-3 font-bold text-emerald-800">
-              Importer les missions de mai 2026
-            </button>
-          </form>
         </section>
 
         <section className="card rounded-[2rem] p-6">
@@ -205,7 +198,7 @@ export default async function MissionsPage() {
           <div className="rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center">
             <p className="text-lg font-black">Aucune mission pour le moment</p>
             <p className="mt-2 text-slate-600">
-              Ajoute une mission manuellement ou importe les missions de mai 2026.
+              Ajoute une mission manuellement ou saisis une nouvelle prestation.
             </p>
           </div>
         ) : (
@@ -333,4 +326,6 @@ export default async function MissionsPage() {
     </AppShell>
   );
 }
+
+
 

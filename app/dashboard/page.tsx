@@ -46,7 +46,7 @@ export default async function DashboardPage() {
 
           {data.missions.length === 0 ? (
             <p className="rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center text-slate-600">
-              Aucune mission pour le moment. Va dans Missions et importe les donnÃ©es de mai 2026.
+              Aucune mission pour le moment. Crée ta première mission depuis la page Missions.
             </p>
           ) : (
             <div className="space-y-3">
@@ -105,4 +105,5 @@ export default async function DashboardPage() {
     </AppShell>
   );
 }
+
 
