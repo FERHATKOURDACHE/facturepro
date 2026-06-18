@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+﻿import OpenAI from "openai";
 import {
   ExtractedTimesheetSchema,
   fallbackTimesheetExtraction,
@@ -46,7 +46,11 @@ function getOpenAiModel() {
   return model;
 }
 
-function runLocalFallback(text: string, mode = "local_fallback", warning?: string) {
+function runLocalFallback(
+  text: string,
+  mode = "local_fallback",
+  warning?: string
+) {
   return Response.json({
     mode,
     ...(warning ? { warning } : {}),
@@ -54,12 +58,21 @@ function runLocalFallback(text: string, mode = "local_fallback", warning?: strin
   });
 }
 
+function cleanJsonOutput(raw: string) {
+  return raw
+    .trim()
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```$/i, "")
+    .trim();
+}
+
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
 
   if (!body || typeof body.text !== "string" || body.text.trim().length < 5) {
     return Response.json(
-      { error: "Texte insuffisant pour l'extraction." },
+      { error: "Texte insuffisant pour l’extraction." },
       { status: 400 }
     );
   }
@@ -68,7 +81,11 @@ export async function POST(request: Request) {
   const apiKey = getOpenAiApiKey();
 
   if (!apiKey) {
-    return runLocalFallback(text);
+    return runLocalFallback(
+      text,
+      "local_fallback",
+      "L’assistant IA en ligne n’est pas configuré. Une extraction locale a été utilisée."
+    );
   }
 
   try {
@@ -82,7 +99,7 @@ export async function POST(request: Request) {
         {
           role: "system",
           content:
-            "Tu extrais des missions de travail pour une application française de facturation. Réponds uniquement avec un JSON valide. Les dates doivent être au format YYYY-MM-DD. Les heures doivent être au format HH:mm. Le champ locationName doit contenir uniquement le lieu, sans date, sans horaires, sans taux et sans frais.",
+            "Tu extrais des missions de travail pour une application française de facturation. Réponds uniquement avec un JSON valide, sans markdown. Les dates doivent être au format YYYY-MM-DD. Les heures doivent être au format HH:mm. Le champ locationName doit contenir uniquement le lieu, sans date, sans horaires, sans taux et sans frais.",
         },
         {
           role: "user",
@@ -123,12 +140,12 @@ ${text}
     if (!raw) {
       return runLocalFallback(
         text,
-        "local_fallback_after_empty_ai_response",
-        "L'IA n'a retourné aucune réponse exploitable."
+        "local_fallback",
+        "L’assistant IA n’a pas retourné de réponse exploitable. Une extraction locale a été utilisée."
       );
     }
 
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(cleanJsonOutput(raw));
     const validated = ExtractedTimesheetSchema.parse(parsed);
 
     return Response.json({
@@ -136,10 +153,13 @@ ${text}
       data: validated,
     });
   } catch (error) {
+    console.error("[AI_TIMESHEET_EXTRACTION_ERROR]", error);
+
     return runLocalFallback(
       text,
-      "local_fallback_after_ai_error",
-      error instanceof Error ? error.message : "Erreur IA inconnue"
+      "local_fallback",
+      "L’assistant IA en ligne est momentanément indisponible. Une extraction locale a été utilisée."
     );
   }
 }
+
