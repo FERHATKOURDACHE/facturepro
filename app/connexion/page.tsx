@@ -1,9 +1,8 @@
-
-import Link from "next/link";
-import { GoogleOAuthButton } from "@/components/auth/GoogleOAuthButton";
+﻿import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import { GoogleOAuthButton } from "@/components/auth/GoogleOAuthButton";
 import { loginAction } from "@/lib/auth-actions";
 
 export const dynamic = "force-dynamic";
@@ -15,10 +14,18 @@ type ConnexionPageProps = {
 };
 
 function getErrorMessage(error?: string) {
-  if (error === "missing_fields") return "Email et mot de passe obligatoires.";
+  if (error === "missing_fields") {
+    return {
+      title: "Champs obligatoires",
+      message: "Renseigne ton email et ton mot de passe pour te connecter.",
+    };
+  }
 
   if (error === "invalid_credentials") {
-    return "Email ou mot de passe incorrect.";
+    return {
+      title: "Connexion impossible",
+      message: "L'email ou le mot de passe est incorrect. Vérifie tes identifiants puis réessaie.",
+    };
   }
 
   return null;
@@ -30,7 +37,7 @@ export default async function ConnexionPage({
   const session = await auth();
 
   if (session?.user) {
-    redirect("/dashboard");
+    redirect("/apres-connexion");
   }
 
   const params = await searchParams;
@@ -52,8 +59,9 @@ export default async function ConnexionPage({
         </p>
 
         {errorMessage && (
-          <div className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-700">
-            {errorMessage}
+          <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800">
+            <p className="font-black">{errorMessage.title}</p>
+            <p className="mt-1 text-sm leading-6">{errorMessage.message}</p>
           </div>
         )}
 
@@ -74,6 +82,7 @@ export default async function ConnexionPage({
               required
               className="input mt-2"
               placeholder="vous@exemple.com"
+              autoComplete="email"
             />
           </div>
 
@@ -87,12 +96,13 @@ export default async function ConnexionPage({
               required
               className="input mt-2"
               placeholder="Votre mot de passe"
+              autoComplete="current-password"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full rounded-full bg-[var(--primary)] px-6 py-4 font-bold text-white shadow-xl"
+            className="w-full rounded-full bg-[var(--primary)] px-6 py-4 font-bold text-white shadow-xl transition hover:-translate-y-0.5"
           >
             Se connecter
           </button>
@@ -108,4 +118,3 @@ export default async function ConnexionPage({
     </main>
   );
 }
-

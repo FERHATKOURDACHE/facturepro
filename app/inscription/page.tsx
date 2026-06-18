@@ -1,9 +1,8 @@
-﻿
-import Link from "next/link";
-import { GoogleOAuthButton } from "@/components/auth/GoogleOAuthButton";
+﻿import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import { GoogleOAuthButton } from "@/components/auth/GoogleOAuthButton";
 import { registerAction } from "@/lib/auth-actions";
 
 export const dynamic = "force-dynamic";
@@ -15,14 +14,25 @@ type InscriptionPageProps = {
 };
 
 function getErrorMessage(error?: string) {
-  if (error === "missing_fields") return "Tous les champs sont obligatoires.";
+  if (error === "missing_fields") {
+    return {
+      title: "Champs obligatoires",
+      message: "Renseigne ton nom, ton email et ton mot de passe pour créer ton compte.",
+    };
+  }
 
   if (error === "password_too_short") {
-    return "Le mot de passe doit contenir au moins 8 caractères.";
+    return {
+      title: "Mot de passe trop court",
+      message: "Utilise un mot de passe d'au moins 8 caractères.",
+    };
   }
 
   if (error === "email_already_used") {
-    return "Un compte existe déjà avec cet email.";
+    return {
+      title: "Email déjà utilisé",
+      message: "Un compte existe déjà avec cet email. Connecte-toi ou utilise une autre adresse.",
+    };
   }
 
   return null;
@@ -34,7 +44,7 @@ export default async function InscriptionPage({
   const session = await auth();
 
   if (session?.user) {
-    redirect("/dashboard");
+    redirect("/apres-connexion");
   }
 
   const params = await searchParams;
@@ -56,8 +66,9 @@ export default async function InscriptionPage({
         </p>
 
         {errorMessage && (
-          <div className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-700">
-            {errorMessage}
+          <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800">
+            <p className="font-black">{errorMessage.title}</p>
+            <p className="mt-1 text-sm leading-6">{errorMessage.message}</p>
           </div>
         )}
 
@@ -78,6 +89,7 @@ export default async function InscriptionPage({
               required
               className="input mt-2"
               placeholder="Votre nom"
+              autoComplete="name"
             />
           </div>
 
@@ -89,6 +101,7 @@ export default async function InscriptionPage({
               required
               className="input mt-2"
               placeholder="vous@exemple.com"
+              autoComplete="email"
             />
           </div>
 
@@ -103,12 +116,13 @@ export default async function InscriptionPage({
               minLength={8}
               className="input mt-2"
               placeholder="Minimum 8 caractères"
+              autoComplete="new-password"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full rounded-full bg-[var(--primary)] px-6 py-4 font-bold text-white shadow-xl"
+            className="w-full rounded-full bg-[var(--primary)] px-6 py-4 font-bold text-white shadow-xl transition hover:-translate-y-0.5"
           >
             Créer mon compte
           </button>
@@ -124,5 +138,3 @@ export default async function InscriptionPage({
     </main>
   );
 }
-
-
