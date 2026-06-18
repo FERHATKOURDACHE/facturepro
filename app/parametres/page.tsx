@@ -1,4 +1,6 @@
-﻿import { AppShell } from "@/components/AppShell";
+﻿import Link from "next/link";
+
+import { AppShell } from "@/components/AppShell";
 import { getCurrentOrganization } from "@/lib/current-organization";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/require-auth";
@@ -19,6 +21,15 @@ function isFilled(value?: string | null) {
 
 function progressLabel(completed: number, total: number) {
   return `${completed}/${total} informations obligatoires`;
+}
+
+function completionPercent(completed: number, total: number) {
+  if (total === 0) return 0;
+  return Math.round((completed / total) * 100);
+}
+
+function displayValue(value?: string | null) {
+  return isFilled(value) ? value : "Non renseigné";
 }
 
 export default async function ParametresPage({
@@ -74,12 +85,59 @@ export default async function ParametresPage({
     },
   ];
 
+  const professionalItems = [
+    {
+      label: "Email",
+      complete: isFilled(profile?.email),
+      helper: "Coordonnée visible ou utile pour les échanges client.",
+    },
+    {
+      label: "Téléphone",
+      complete: isFilled(profile?.phone),
+      helper: "Coordonnée de contact complémentaire.",
+    },
+    {
+      label: "SIRET",
+      complete: isFilled(profile?.siret),
+      helper: "Identifiant utile sur les documents professionnels.",
+    },
+    {
+      label: "Mention légale",
+      complete: isFilled(profile?.invoiceLegalNotice),
+      helper: "Texte repris dans les factures PDF.",
+    },
+    {
+      label: "IBAN",
+      complete: isFilled(profile?.iban),
+      helper: "Coordonnée bancaire pour le règlement.",
+    },
+    {
+      label: "Taux URSSAF",
+      complete: Boolean(profile?.urssafRate),
+      helper: "Base de calcul du suivi URSSAF.",
+    },
+  ];
+
   const completedRequiredItems = requiredItems.filter((item) => item.complete).length;
+  const completedProfessionalItems = professionalItems.filter((item) => item.complete).length;
+  const professionalPercent = completionPercent(
+    completedRequiredItems + completedProfessionalItems,
+    requiredItems.length + professionalItems.length
+  );
+
+  const invoicePreviewLines = [
+    ["Émetteur", profile?.legalName ?? organization.name],
+    ["Adresse", [profile?.addressLine1, profile?.postalCode, profile?.city].filter(Boolean).join(" ")],
+    ["Email", profile?.email],
+    ["Téléphone", profile?.phone],
+    ["SIRET", profile?.siret],
+    ["Mention légale", profile?.invoiceLegalNotice ?? "TVA non applicable - article 293 B du CGI"],
+  ];
 
   return (
     <AppShell
       title="Paramètres"
-      subtitle="Informations de l'émetteur, coordonnées bancaires et préférences document."
+      subtitle="Configure le profil émetteur utilisé dans les factures, les exports PDF / Excel et le suivi URSSAF."
     >
       <form action={updateSettingsAction} className="grid gap-6">
         <input
@@ -173,6 +231,89 @@ export default async function ParametresPage({
 
         <input type="hidden" name="profileId" value={profile?.id ?? ""} />
 
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.25em] text-[var(--primary)]">
+                Parcours paramètres
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-slate-950">
+                Profil entreprise → factures → exports → URSSAF
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                Les informations ci-dessous alimentent automatiquement les factures,
+                les PDF, les fichiers Excel, les mentions légales et le suivi URSSAF.
+                Une fiche complète évite les documents incomplets ou non professionnels.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/factures"
+                className="rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-black text-slate-800 transition hover:bg-white"
+              >
+                Voir les factures
+              </Link>
+              <Link
+                href="/urssaf"
+                className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5"
+              >
+                Voir l'URSSAF
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-4">
+          <div className="rounded-[1.5rem] border border-slate-200 bg-white/85 p-5 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-500">
+              Complétion
+            </p>
+            <p className="mt-3 text-3xl font-black text-slate-950">
+              {professionalPercent}%
+            </p>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              Profil professionnel global
+            </p>
+          </div>
+
+          <div className="rounded-[1.5rem] border border-slate-200 bg-white/85 p-5 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-500">
+              Obligatoire
+            </p>
+            <p className="mt-3 text-3xl font-black text-slate-950">
+              {completedRequiredItems}/{requiredItems.length}
+            </p>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              Champs requis pour utiliser l'application
+            </p>
+          </div>
+
+          <div className="rounded-[1.5rem] border border-slate-200 bg-white/85 p-5 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-500">
+              Facture
+            </p>
+            <p className="mt-3 text-3xl font-black text-slate-950">
+              {isFilled(profile?.invoiceLegalNotice) ? "OK" : "À faire"}
+            </p>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              Mention légale par défaut
+            </p>
+          </div>
+
+          <div className="rounded-[1.5rem] border border-slate-200 bg-white/85 p-5 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-500">
+              URSSAF
+            </p>
+            <p className="mt-3 text-3xl font-black text-slate-950">
+              {profile?.urssafRate?.toString() ?? "0.256"}
+            </p>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              Taux configuré pour l'estimation
+            </p>
+          </div>
+        </section>
+
         <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <section className="card rounded-[2rem] p-6">
             <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
@@ -181,6 +322,9 @@ export default async function ParametresPage({
                   Étape principale
                 </p>
                 <h2 className="mt-2 text-2xl font-black">Profil émetteur</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Ces informations apparaissent sur les factures et les exports.
+                </p>
               </div>
 
               {onboardingRequired && (
@@ -310,6 +454,35 @@ export default async function ParametresPage({
           </section>
 
           <section className="card rounded-[2rem] p-6">
+            <h2 className="text-2xl font-black">Aperçu facture</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Contrôle rapide des informations reprises dans les documents PDF et Excel.
+            </p>
+
+            <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-500">
+                FacturePro - aperçu émetteur
+              </p>
+
+              <div className="mt-4 grid gap-3">
+                {invoicePreviewLines.map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="rounded-2xl bg-slate-50 p-4 text-sm"
+                  >
+                    <p className="font-black text-slate-950">{label}</p>
+                    <p className="mt-1 leading-6 text-slate-600">
+                      {displayValue(value)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <section className="card rounded-[2rem] p-6">
             <h2 className="text-2xl font-black">Informations légales</h2>
 
             <div className="mt-6 grid gap-4">
@@ -395,9 +568,7 @@ export default async function ParametresPage({
               </label>
             </div>
           </section>
-        </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
           <section className="card rounded-[2rem] p-6">
             <h2 className="text-2xl font-black">Coordonnées bancaires</h2>
 
@@ -425,65 +596,70 @@ export default async function ParametresPage({
                   placeholder="Optionnel"
                 />
               </label>
-            </div>
-          </section>
 
-          <section className="card rounded-[2rem] p-6">
-            <h2 className="text-2xl font-black">Préférences facture</h2>
-
-            <div className="mt-6 grid gap-4">
-              <label className="grid gap-2">
-                <span className="text-sm font-bold text-[var(--muted)]">
-                  Taux horaire standard
-                </span>
-                <input
-                  className="input"
-                  name="defaultHourlyRate"
-                  type="number"
-                  step="0.01"
-                  defaultValue={profile?.defaultHourlyRate?.toString() ?? "13"}
-                />
-              </label>
-
-              <label className="grid gap-2">
-                <span className="text-sm font-bold text-[var(--muted)]">
-                  Devise
-                </span>
-                <input
-                  className="input"
-                  name="currency"
-                  defaultValue={organization.currency ?? "EUR"}
-                />
-              </label>
-
-              <label className="grid gap-2">
-                <span className="text-sm font-bold text-[var(--muted)]">
-                  Activité URSSAF
-                </span>
-                <select
-                  className="input"
-                  name="urssafActivity"
-                  defaultValue={profile?.urssafActivity ?? "SERVICE_BNC"}
-                >
-                  <option value="SERVICE_BNC">Prestation de service BNC</option>
-                </select>
-              </label>
-
-              <label className="grid gap-2">
-                <span className="text-sm font-bold text-[var(--muted)]">
-                  Taux URSSAF
-                </span>
-                <input
-                  className="input"
-                  name="urssafRate"
-                  type="number"
-                  step="0.0001"
-                  defaultValue={profile?.urssafRate?.toString() ?? "0.2560"}
-                />
-              </label>
+              <div className="rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                Ces champs seront utiles pour afficher clairement les informations
+                de règlement sur les documents de facturation.
+              </div>
             </div>
           </section>
         </div>
+
+        <section className="card rounded-[2rem] p-6">
+          <h2 className="text-2xl font-black">Préférences facture et URSSAF</h2>
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-4">
+            <label className="grid gap-2">
+              <span className="text-sm font-bold text-[var(--muted)]">
+                Taux horaire standard
+              </span>
+              <input
+                className="input"
+                name="defaultHourlyRate"
+                type="number"
+                step="0.01"
+                defaultValue={profile?.defaultHourlyRate?.toString() ?? "13"}
+              />
+            </label>
+
+            <label className="grid gap-2">
+              <span className="text-sm font-bold text-[var(--muted)]">
+                Devise
+              </span>
+              <input
+                className="input"
+                name="currency"
+                defaultValue={organization.currency ?? "EUR"}
+              />
+            </label>
+
+            <label className="grid gap-2">
+              <span className="text-sm font-bold text-[var(--muted)]">
+                Activité URSSAF
+              </span>
+              <select
+                className="input"
+                name="urssafActivity"
+                defaultValue={profile?.urssafActivity ?? "SERVICE_BNC"}
+              >
+                <option value="SERVICE_BNC">Prestation de service BNC</option>
+              </select>
+            </label>
+
+            <label className="grid gap-2">
+              <span className="text-sm font-bold text-[var(--muted)]">
+                Taux URSSAF
+              </span>
+              <input
+                className="input"
+                name="urssafRate"
+                type="number"
+                step="0.0001"
+                defaultValue={profile?.urssafRate?.toString() ?? "0.2560"}
+              />
+            </label>
+          </div>
+        </section>
 
         <div className="sticky bottom-4 z-10 rounded-[2rem] border border-slate-200 bg-white/90 p-4 shadow-2xl backdrop-blur-xl">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

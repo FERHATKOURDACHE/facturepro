@@ -13,7 +13,7 @@ function createSlugFromEmail(email: string, userId: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-  return `${ base || "organisation" } -${ userId.slice(0, 8) } `;
+  return `${base || "organisation"}-${userId.slice(0, 8)}`;
 }
 
 export async function getCurrentOrganization() {
