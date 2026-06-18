@@ -88,8 +88,26 @@ export default async function UrssafPage({
           <h2 className="mt-2 text-2xl font-black">Factures prises en compte</h2>
 
           {invoices.length === 0 ? (
-            <div className="mt-6 rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center text-slate-600">
-              Aucune facture sur cette pÃ©riode.
+            <div className="mt-6 rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center">
+              <p className="text-sm font-bold uppercase tracking-[0.25em] text-[var(--primary)]">
+                Estimation URSSAF
+              </p>
+              <p className="mt-3 text-xl font-black text-slate-950">
+                Aucune facture sur cette période
+              </p>
+              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600">
+                Les cotisations seront estimées automatiquement dès qu’une facture payée ou facturée existe sur la période sélectionnée.
+              </p>
+              <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-left text-sm leading-6 text-slate-600">
+                <p className="font-bold text-slate-900">Pour obtenir une estimation :</p>
+                <p>Crée une facture, vérifie son statut, puis sélectionne la période correspondante dans le simulateur URSSAF.</p>
+              </div>
+              <a
+                href="/factures"
+                className="mt-5 inline-flex rounded-full bg-slate-950 px-5 py-3 text-sm font-bold text-white"
+              >
+                Aller aux factures
+              </a>
             </div>
           ) : (
             <div className="table-wrap mt-6">
@@ -125,5 +143,6 @@ export default async function UrssafPage({
     </AppShell>
   );
 }
+
 
 
