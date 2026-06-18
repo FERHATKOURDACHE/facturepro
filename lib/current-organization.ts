@@ -1,27 +1,59 @@
+
+import { redirect } from "next/navigation";
+
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
-/**
- * Version MVP sans authentification.
- * On utilise l'organisation de démonstration créée par le seed.
- *
- * Quand on ajoutera l'authentification, cette fonction devra retourner
- * l'organisation liée à l'utilisateur connecté.
- */
+function createSlugFromEmail(email: string, userId: string) {
+  const base = email
+    .split("@")[0]
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return `${ base || "organisation" } -${ userId.slice(0, 8) } `;
+}
+
 export async function getCurrentOrganization() {
-  const organization = await prisma.organization.findFirst({
+  const session = await auth();
+
+  if (!session?.user?.id || !session.user.email) {
+    redirect("/connexion");
+  }
+
+  const membership = await prisma.membership.findFirst({
     where: {
-      slug: "ferhat-kourdache",
+      userId: session.user.id,
+    },
+    include: {
+      organization: true,
+    },
+    orderBy: {
+      createdAt: "asc",
     },
   });
 
-  if (organization) return organization;
+  if (membership?.organization) {
+    return membership.organization;
+  }
 
-  return prisma.organization.create({
+  const organization = await prisma.organization.create({
     data: {
-      name: "Ferhat KOURDACHE",
-      slug: "ferhat-kourdache",
+      name: session.user.name ?? session.user.email,
+      slug: createSlugFromEmail(session.user.email, session.user.id),
       country: "FR",
       currency: "EUR",
+      memberships: {
+        create: {
+          userId: session.user.id,
+          role: "OWNER",
+        },
+      },
     },
   });
+
+  return organization;
 }
+
