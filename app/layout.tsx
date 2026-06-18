@@ -1,10 +1,11 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
+
+import { siteConfig } from "@/lib/site-config";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FacturePro - Facturation pour micro-entrepreneurs",
-  description:
-    "Application de facturation pour gérer clients, missions, heures, PDF, Excel, paiements, URSSAF et import IA.",
+  title: `${siteConfig.name} - Facturation pour micro-entrepreneurs`,
+  description: siteConfig.description,
 };
 
 export default function RootLayout({

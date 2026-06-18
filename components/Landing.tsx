@@ -1,4 +1,5 @@
 ﻿import Link from "next/link";
+import { siteConfig } from "@/lib/site-config";
 import {
   ArrowRight,
   BadgeCheck,
@@ -84,12 +85,24 @@ export function Landing() {
           </div>
 
           <div>
-            <p className="text-lg font-black tracking-tight">FacturePro</p>
+            <p className="text-lg font-black tracking-tight">{siteConfig.name}</p>
             <p className="text-xs font-semibold text-slate-500">
               Facturation pour indépendants
             </p>
           </div>
         </Link>
+
+        <nav className="hidden items-center gap-5 text-sm font-black text-slate-600 lg:flex">
+          <Link href="/tarifs" className="transition hover:text-slate-950">
+            Tarifs
+          </Link>
+          <Link href="/support" className="transition hover:text-slate-950">
+            Support
+          </Link>
+          <Link href="/confidentialite" className="transition hover:text-slate-950">
+            RGPD
+          </Link>
+        </nav>
 
         <div className="flex items-center gap-3">
           <Link
@@ -373,6 +386,64 @@ export function Landing() {
           </div>
         </div>
       </section>
-    </main>
+    
+      <footer className="border-t border-slate-200 bg-white">
+        <div className="mx-auto grid max-w-7xl gap-8 px-6 py-10 md:grid-cols-[1fr_auto] md:items-start">
+          <div>
+            <p className="text-lg font-black text-slate-950">{siteConfig.name}</p>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
+              {siteConfig.description}
+            </p>
+            <p className="mt-4 text-xs font-semibold text-slate-400">
+              © {new Date().getFullYear()} {siteConfig.name}. Tous droits réservés.
+            </p>
+          </div>
+
+          <div className="grid gap-6 text-sm sm:grid-cols-3">
+            <div>
+              <p className="font-black text-slate-950">Produit</p>
+              <div className="mt-3 grid gap-2 text-slate-600">
+                <Link href="/tarifs" className="hover:text-slate-950">
+                  Tarifs
+                </Link>
+                <Link href="/support" className="hover:text-slate-950">
+                  Support
+                </Link>
+                <Link href="/connexion" className="hover:text-slate-950">
+                  Connexion
+                </Link>
+              </div>
+            </div>
+
+            <div>
+              <p className="font-black text-slate-950">Légal</p>
+              <div className="mt-3 grid gap-2 text-slate-600">
+                <Link href="/mentions-legales" className="hover:text-slate-950">
+                  Mentions légales
+                </Link>
+                <Link href="/confidentialite" className="hover:text-slate-950">
+                  Confidentialité
+                </Link>
+                <Link href="/cgu" className="hover:text-slate-950">
+                  CGU
+                </Link>
+              </div>
+            </div>
+
+            <div>
+              <p className="font-black text-slate-950">RGPD</p>
+              <div className="mt-3 grid gap-2 text-slate-600">
+                <a href={`mailto:${siteConfig.rgpdEmail}`} className="hover:text-slate-950">
+                  Contact RGPD
+                </a>
+                <a href={`mailto:${siteConfig.supportEmail}`} className="hover:text-slate-950">
+                  Support
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer></main>
   );
 }
+
