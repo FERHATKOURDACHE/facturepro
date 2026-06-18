@@ -40,7 +40,7 @@ export default async function ClientsPage() {
             </p>
             <h2 className="mt-2 text-2xl font-black">Ajouter un client</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Les informations sont maintenant sauvegardÃ©es en base PostgreSQL.
+              Renseigne les informations principales de ton client pour pouvoir créer des missions et générer des factures.
             </p>
           </div>
 
@@ -89,8 +89,19 @@ export default async function ClientsPage() {
 
           {clients.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center">
-              <p className="text-lg font-black">Aucun client pour le moment</p>
-              <p className="mt-2 text-slate-600">Ajoute ton premier client avec le formulaire.</p>
+              <p className="text-sm font-bold uppercase tracking-[0.25em] text-[var(--primary)]">
+                Première étape
+              </p>
+              <p className="mt-3 text-xl font-black text-slate-950">
+                Aucun client enregistré
+              </p>
+              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600">
+                Ajoute ton premier client pour commencer à créer des missions, suivre tes heures et générer tes factures.
+              </p>
+              <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-left text-sm leading-6 text-slate-600">
+                <p className="font-bold text-slate-900">Conseil :</p>
+                <p>Commence par renseigner le nom légal, l’adresse, le code postal et la ville du client.</p>
+              </div>
             </div>
           ) : (
             <div className="space-y-5">
@@ -162,4 +173,6 @@ export default async function ClientsPage() {
     </AppShell>
   );
 }
+
+
 

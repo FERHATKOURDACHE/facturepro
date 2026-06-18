@@ -45,9 +45,18 @@ export default async function DashboardPage() {
           </div>
 
           {data.missions.length === 0 ? (
-            <p className="rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center text-slate-600">
-              Aucune mission pour le moment. Crée ta première mission depuis la page Missions.
-            </p>
+            <div className="rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center">
+              <p className="text-lg font-black text-slate-950">Aucune mission enregistrée</p>
+              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600">
+                Commence par créer un client, puis ajoute ta première mission pour suivre tes heures et ton chiffre d’affaires.
+              </p>
+              <a
+                href="/missions"
+                className="mt-5 inline-flex rounded-full bg-[var(--primary)] px-5 py-3 text-sm font-bold text-white"
+              >
+                Créer une mission
+              </a>
+            </div>
           ) : (
             <div className="space-y-3">
               {data.missions.map((mission) => (
@@ -79,9 +88,18 @@ export default async function DashboardPage() {
           <h2 className="text-2xl font-black">Factures rÃ©centes</h2>
 
           {data.invoices.length === 0 ? (
-            <p className="mt-5 rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center text-slate-600">
-              Aucune facture en base.
-            </p>
+            <div className="mt-5 rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center">
+              <p className="text-lg font-black text-slate-950">Aucune facture générée</p>
+              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600">
+                Une fois tes missions validées, tu pourras générer une facture automatiquement depuis la page Factures.
+              </p>
+              <a
+                href="/factures"
+                className="mt-5 inline-flex rounded-full bg-slate-950 px-5 py-3 text-sm font-bold text-white"
+              >
+                Aller aux factures
+              </a>
+            </div>
           ) : (
             <div className="mt-5 space-y-3">
               {data.invoices.map((invoice) => (
@@ -105,5 +123,7 @@ export default async function DashboardPage() {
     </AppShell>
   );
 }
+
+
 
 
