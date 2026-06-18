@@ -2,7 +2,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { InvoiceStatus } from "@prisma/client";
+import { InvoiceStatus, PaymentMethod } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { getCurrentOrganization } from "@/lib/current-organization";
@@ -54,6 +54,25 @@ function addDays(date: Date, days: number) {
   const clone = new Date(date);
   clone.setUTCDate(clone.getUTCDate() + days);
   return clone;
+}
+
+const PAYMENT_METHODS = new Set<PaymentMethod>([
+  PaymentMethod.BANK_TRANSFER,
+  PaymentMethod.CARD,
+  PaymentMethod.CASH,
+  PaymentMethod.CHECK,
+  PaymentMethod.OTHER,
+]);
+
+function paymentMethodFromForm(formData: FormData) {
+  const method =
+    optionalString(formData.get("method")) ?? PaymentMethod.BANK_TRANSFER;
+
+  if (!PAYMENT_METHODS.has(method as PaymentMethod)) {
+    throw new Error("Méthode de paiement invalide.");
+  }
+
+  return method as PaymentMethod;
 }
 
 async function assertClientBelongsToOrganization(
@@ -342,6 +361,13 @@ export async function registerInvoicePaymentAction(formData: FormData) {
   const organization = await getCurrentOrganization();
   const id = requiredString(formData, "id");
   const amount = numberFromForm(formData, "amount", 0);
+  const method = paymentMethodFromForm(formData);
+  const paidAtInput = optionalString(formData.get("paidAt"));
+  const paidAt = paidAtInput ? dateFromInput(paidAtInput) : new Date();
+
+  if (Number.isNaN(paidAt.getTime())) {
+    throw new Error("Date d'encaissement invalide.");
+  }
 
   if (amount <= 0) {
     throw new Error("Le montant du paiement doit être supérieur à zéro.");
@@ -358,20 +384,14 @@ export async function registerInvoicePaymentAction(formData: FormData) {
     throw new Error("Facture introuvable.");
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.payment.create({
-      data: {
-        organizationId: organization.id,
-        invoiceId: id,
-        amount: toDecimal(amount),
-        method: "BANK_TRANSFER",
-        paidAt: new Date(),
-        reference: optionalString(formData.get("reference")),
-        notes: optionalString(formData.get("notes")),
-      },
-    });
+  if (invoice.status === "CANCELLED") {
+    throw new Error("Impossible d'enregistrer un paiement sur une facture annulée.");
+  }
 
-    const paidTotal = await tx.payment.aggregate({
+  const invoiceTotal = Number(invoice.total);
+
+  await prisma.$transaction(async (tx) => {
+    const paidTotalBefore = await tx.payment.aggregate({
       where: {
         invoiceId: id,
         organizationId: organization.id,
@@ -381,8 +401,33 @@ export async function registerInvoicePaymentAction(formData: FormData) {
       },
     });
 
-    const totalPaid = Number(paidTotal._sum.amount ?? 0);
-    const invoiceTotal = Number(invoice.total);
+    const alreadyPaid = Number(paidTotalBefore._sum.amount ?? 0);
+    const remainingAmount = roundMoney(invoiceTotal - alreadyPaid);
+    const totalAfterPayment = roundMoney(alreadyPaid + amount);
+
+    if (remainingAmount <= 0) {
+      throw new Error("Cette facture est déjà entièrement payée.");
+    }
+
+    if (totalAfterPayment > invoiceTotal + 0.01) {
+      throw new Error(
+        "Le montant dépasse le reste à payer (" +
+          remainingAmount.toFixed(2).replace(".", ",") +
+          " €)."
+      );
+    }
+
+    await tx.payment.create({
+      data: {
+        organizationId: organization.id,
+        invoiceId: id,
+        amount: toDecimal(amount),
+        method,
+        paidAt,
+        reference: optionalString(formData.get("reference")),
+        notes: optionalString(formData.get("notes")),
+      },
+    });
 
     await tx.invoice.update({
       where: {
@@ -390,13 +435,14 @@ export async function registerInvoicePaymentAction(formData: FormData) {
         organizationId: organization.id,
       },
       data: {
-        status: totalPaid >= invoiceTotal ? "PAID" : "PARTIALLY_PAID",
+        status: totalAfterPayment >= invoiceTotal ? "PAID" : "PARTIALLY_PAID",
       },
     });
   });
 
   revalidatePath("/factures");
   revalidatePath("/dashboard");
+  revalidatePath("/urssaf");
 }
 
 export async function cancelInvoiceAction(formData: FormData) {

@@ -56,6 +56,18 @@ function decimalToNumber(value: unknown) {
   return Number(value ?? 0);
 }
 
+function paymentMethodLabel(method: string) {
+  const labels: Record<string, string> = {
+    BANK_TRANSFER: "Virement",
+    CARD: "Carte bancaire",
+    CASH: "Espèces",
+    CHECK: "Chèque",
+    OTHER: "Autre",
+  };
+
+  return labels[method] ?? method;
+}
+
 export default async function FacturesPage() {
   await requireUser();
   await requireCompanyProfileCompleted();
@@ -63,6 +75,7 @@ export default async function FacturesPage() {
 
   const defaultClient = clients[0];
   const defaultProfile = profiles[0];
+  const todayInput = new Date().toISOString().slice(0, 10);
 
   return (
     <AppShell
@@ -200,7 +213,12 @@ placeholder="Libellé déduction"
                   0
                 );
 
-                return (
+                
+                const remainingAmount = Math.max(
+                  0,
+                  decimalToNumber(invoice.total) - paidAmount
+                );
+return (
                   <article key={invoice.id} className="rounded-[1.5rem] border border-slate-100 bg-white/85 p-5">
                     <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
                       <div>
@@ -308,14 +326,58 @@ placeholder="Libellé déduction"
                         </button>
                       </form>
 
-                      <form action={registerInvoicePaymentAction} className="rounded-2xl bg-emerald-50 p-3">
-                        <input type="hidden" name="id" value={invoice.id} />
-                        <input className="input mb-2 bg-white" name="amount" type="number" min="0" step="0.01" defaultValue={decimalToNumber(invoice.total)} />
-                        <input className="input mb-2 bg-white" name="reference" placeholder="Référence paiement" />
-                        <button className="w-full rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white">
-                          Enregistrer paiement
-                        </button>
-                      </form>
+                      {remainingAmount > 0 ? (
+                        <form action={registerInvoicePaymentAction} className="rounded-2xl bg-emerald-50 p-3 md:col-span-2">
+                          <input type="hidden" name="id" value={invoice.id} />
+
+                          <div className="mb-2 rounded-xl bg-white/80 p-3 text-xs font-bold text-emerald-900">
+                            Reste à payer : {formatCurrency(remainingAmount)}
+                          </div>
+
+                          <div className="grid gap-2 md:grid-cols-2">
+                            <input
+                              className="input bg-white"
+                              name="amount"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              defaultValue={remainingAmount}
+                              placeholder="Montant encaissé"
+                            />
+                            <input
+                              className="input bg-white"
+                              name="paidAt"
+                              type="date"
+                              defaultValue={todayInput}
+                              aria-label="Date d'encaissement"
+                            />
+                          </div>
+
+                          <select className="input mt-2 bg-white" name="method" defaultValue="BANK_TRANSFER">
+                            <option value="BANK_TRANSFER">Virement bancaire</option>
+                            <option value="CARD">Carte bancaire</option>
+                            <option value="CASH">Espèces</option>
+                            <option value="CHECK">Chèque</option>
+                            <option value="OTHER">Autre</option>
+                          </select>
+
+                          <input className="input mt-2 bg-white" name="reference" placeholder="Référence paiement" />
+
+                          <textarea
+                            className="input mt-2 min-h-20 bg-white"
+                            name="notes"
+                            placeholder="Notes paiement"
+                          />
+
+                          <button className="mt-2 w-full rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white">
+                            Enregistrer paiement
+                          </button>
+                        </form>
+                      ) : (
+                        <div className="rounded-2xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800 md:col-span-2">
+                          Facture entièrement payée
+                        </div>
+                      )}
 
                       <form action={updateInvoiceStatusAction}>
                         <input type="hidden" name="id" value={invoice.id} />
