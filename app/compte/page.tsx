@@ -69,6 +69,14 @@ export default async function ComptePage() {
   const hasPassword = Boolean(user.passwordHash);
   const hasStripe = Boolean(user.stripeCustomerId || user.stripeSubscriptionId);
 
+  const planLabel = user.plan === "FREE" ? "Gratuit" : user.plan;
+  const subscriptionStatus = hasStripe
+    ? "Abonnement Stripe relié"
+    : "Aucun abonnement payant relié";
+  const securityLabel = hasPassword
+    ? "Email + mot de passe"
+    : "Connexion externe OAuth";
+
   const infoCards = [
     {
       label: "Email",
