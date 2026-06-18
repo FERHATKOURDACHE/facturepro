@@ -1,7 +1,22 @@
 ﻿"use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, Bot, CheckCircle2, FileText, Loader2, Timer } from "lucide-react";
+import {
+  AlertTriangle,
+  Bot,
+  CheckCircle2,
+  FileText,
+  Loader2,
+  Timer,
+  UploadCloud,
+} from "lucide-react";
+
+import { importAiMissionsAction } from "@/app/ai/actions";
+
+type ClientOption = {
+  id: string;
+  legalName: string;
+};
 
 type ExtractedMission = {
   date: string;
@@ -62,11 +77,20 @@ function getDurationHours(startTime: string, endTime: string) {
   return Math.round((duration / 60) * 100) / 100;
 }
 
-export function AiTimesheetExtractor() {
+export function AiTimesheetExtractor({
+  clients,
+}: {
+  clients: ClientOption[];
+}) {
   const [text, setText] = useState(EXAMPLE_TEXT);
+  const [selectedClientId, setSelectedClientId] = useState(clients[0]?.id ?? "");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AiResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const missionsJson = useMemo(() => {
+    return JSON.stringify(result?.data.missions ?? []);
+  }, [result]);
 
   const totalAmount = useMemo(() => {
     if (!result) return 0;
@@ -109,11 +133,18 @@ export function AiTimesheetExtractor() {
 
       setResult(json);
     } catch {
-      setError("L’extraction n’a pas pu être réalisée. Vérifie ton texte puis réessaie.");
+      setError(
+        "L’extraction n’a pas pu être réalisée. Vérifie ton texte puis réessaie."
+      );
     } finally {
       setLoading(false);
     }
   }
+
+  const canImport =
+    Boolean(result?.data.missions.length) &&
+    Boolean(selectedClientId) &&
+    clients.length > 0;
 
   return (
     <div className="mx-auto grid max-w-6xl gap-6 xl:grid-cols-[0.9fr_1.1fr]">
@@ -131,8 +162,8 @@ export function AiTimesheetExtractor() {
               Extraire des heures depuis un texte
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Colle un message brut contenant des dates, horaires, lieux, taux ou frais.
-              FacturePro le transforme en feuille de temps structurée.
+              Colle un message brut contenant des dates, horaires, lieux, taux
+              ou frais. FacturePro le transforme en feuille de temps structurée.
             </p>
           </div>
         </div>
@@ -203,7 +234,8 @@ export function AiTimesheetExtractor() {
               Prévisualisation structurée
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Vérifie les lignes extraites avant de les utiliser pour créer tes missions.
+              Vérifie les lignes extraites avant de les importer dans tes
+              missions.
             </p>
           </div>
         </div>
@@ -214,7 +246,8 @@ export function AiTimesheetExtractor() {
               Aucun résultat pour le moment
             </p>
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">
-              Lance une extraction pour obtenir les dates, horaires, lieux, taux et frais détectés.
+              Lance une extraction pour obtenir les dates, horaires, lieux, taux
+              et frais détectés.
             </p>
           </div>
         ) : (
@@ -270,53 +303,94 @@ export function AiTimesheetExtractor() {
 
             {result.data.missions.length === 0 ? (
               <div className="rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center text-slate-600">
-                Aucune mission détectée. Ajoute une date et une plage horaire dans le texte.
+                Aucune mission détectée. Ajoute une date et une plage horaire
+                dans le texte.
               </div>
             ) : (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Horaires</th>
-                      <th>Durée</th>
-                      <th>Lieu</th>
-                      <th>Taux</th>
-                      <th>Frais</th>
-                    </tr>
-                  </thead>
+              <>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Horaires</th>
+                        <th>Durée</th>
+                        <th>Lieu</th>
+                        <th>Taux</th>
+                        <th>Frais</th>
+                      </tr>
+                    </thead>
 
-                  <tbody>
-                    {result.data.missions.map((mission, index) => {
-                      const duration = getDurationHours(
-                        mission.startTime,
-                        mission.endTime
-                      );
+                    <tbody>
+                      {result.data.missions.map((mission, index) => {
+                        const duration = getDurationHours(
+                          mission.startTime,
+                          mission.endTime
+                        );
 
-                      return (
-                        <tr key={`${mission.date}-${mission.startTime}-${index}`}>
-                          <td>{mission.date}</td>
-                          <td>
-                            {mission.startTime} - {mission.endTime}
-                          </td>
-                          <td>{duration}h</td>
-                          <td>{mission.locationName ?? "-"}</td>
-                          <td>
-                            {mission.hourlyRate !== null
-                              ? `${mission.hourlyRate} €/h`
-                              : "-"}
-                          </td>
-                          <td>
-                            {mission.fuelAmount !== null
-                              ? formatCurrency(mission.fuelAmount)
-                              : "-"}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                        return (
+                          <tr key={`${mission.date}-${mission.startTime}-${index}`}>
+                            <td>{mission.date}</td>
+                            <td>
+                              {mission.startTime} - {mission.endTime}
+                            </td>
+                            <td>{duration}h</td>
+                            <td>{mission.locationName ?? "-"}</td>
+                            <td>
+                              {mission.hourlyRate !== null
+                                ? `${mission.hourlyRate} €/h`
+                                : "-"}
+                            </td>
+                            <td>
+                              {mission.fuelAmount !== null
+                                ? formatCurrency(mission.fuelAmount)
+                                : "-"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <form action={importAiMissionsAction} className="rounded-3xl border border-emerald-100 bg-emerald-50 p-5">
+                  <input type="hidden" name="missionsJson" value={missionsJson} />
+
+                  <label className="block text-sm font-black text-emerald-900">
+                    Client à rattacher aux missions
+                  </label>
+
+                  {clients.length === 0 ? (
+                    <div className="mt-3 rounded-2xl bg-white p-4 text-sm font-semibold text-amber-800">
+                      Ajoute d’abord un client dans la page Clients avant
+                      d’importer des missions.
+                    </div>
+                  ) : (
+                    <select
+                      name="clientId"
+                      value={selectedClientId}
+                      onChange={(event) => setSelectedClientId(event.target.value)}
+                      className="input mt-3 bg-white"
+                      required
+                    >
+                      {clients.map((client) => (
+                        <option key={client.id} value={client.id}>
+                          {client.legalName}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={!canImport}
+                    className="mt-4 inline-flex items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-6 py-4 font-bold text-white shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <UploadCloud size={18} />
+                    Importer les missions
+                  </button>
+                </form>
+              </>
             )}
           </div>
         )}
