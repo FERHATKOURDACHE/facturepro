@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+﻿import { prisma } from "@/lib/prisma";
 import { getCurrentOrganization } from "@/lib/current-organization";
 
 export async function getUrssafTurnover(params: {
@@ -7,23 +7,58 @@ export async function getUrssafTurnover(params: {
 }) {
   const organization = await getCurrentOrganization();
 
-  const invoices = await prisma.invoice.findMany({
+  const payments = await prisma.payment.findMany({
     where: {
       organizationId: organization.id,
-      issueDate: {
+      paidAt: {
         gte: params.periodStart,
         lte: params.periodEnd,
       },
-      status: {
-        in: ["SENT", "PARTIALLY_PAID", "PAID", "READY"],
+      invoice: {
+        organizationId: organization.id,
+        status: {
+          not: "CANCELLED",
+        },
       },
+    },
+    include: {
+      invoice: {
+        include: {
+          client: true,
+        },
+      },
+    },
+    orderBy: {
+      paidAt: "desc",
     },
   });
 
-  const turnover = invoices.reduce((sum, invoice) => sum + Number(invoice.total), 0);
+  const turnover = payments.reduce(
+    (sum, payment) => sum + Number(payment.amount),
+    0
+  );
+
+  const invoiceIds = new Set(payments.map((payment) => payment.invoiceId));
+
+  const invoices = payments.map((payment) => ({
+    id: payment.invoice.id,
+    number: payment.invoice.number,
+    issueDate: payment.invoice.issueDate,
+    status: payment.invoice.status,
+    total: payment.invoice.total,
+    clientName: payment.invoice.client.legalName,
+    paidAt: payment.paidAt,
+    paidAmount: Number(payment.amount),
+    paymentReference: payment.reference,
+  }));
 
   return {
     invoices,
+    payments,
     turnover,
+    invoiceCount: invoiceIds.size,
+    paymentCount: payments.length,
+    periodStart: params.periodStart,
+    periodEnd: params.periodEnd,
   };
 }
