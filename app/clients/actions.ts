@@ -1,6 +1,8 @@
-"use server";
+﻿"use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+
 import { prisma } from "@/lib/prisma";
 import { getCurrentOrganization } from "@/lib/current-organization";
 
@@ -17,6 +19,22 @@ function requiredString(formData: FormData, key: string) {
   }
 
   return value.trim();
+}
+
+function numberFromForm(formData: FormData, key: string, defaultValue: number) {
+  const value = formData.get(key);
+
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return defaultValue;
+  }
+
+  const numberValue = Number(value.replace(",", "."));
+
+  if (Number.isNaN(numberValue)) {
+    return defaultValue;
+  }
+
+  return numberValue;
 }
 
 export async function createClientAction(formData: FormData) {
@@ -41,12 +59,14 @@ export async function createClientAction(formData: FormData) {
       siret: optionalString(formData.get("siret")),
       ape: optionalString(formData.get("ape")),
       vatNumber: optionalString(formData.get("vatNumber")),
-      paymentTermsDays: Number(formData.get("paymentTermsDays") || 30),
+      paymentTermsDays: numberFromForm(formData, "paymentTermsDays", 30),
     },
   });
 
   revalidatePath("/clients");
   revalidatePath("/dashboard");
+
+  redirect("/clients?saved=created");
 }
 
 export async function updateClientAction(formData: FormData) {
@@ -75,12 +95,14 @@ export async function updateClientAction(formData: FormData) {
       siret: optionalString(formData.get("siret")),
       ape: optionalString(formData.get("ape")),
       vatNumber: optionalString(formData.get("vatNumber")),
-      paymentTermsDays: Number(formData.get("paymentTermsDays") || 30),
+      paymentTermsDays: numberFromForm(formData, "paymentTermsDays", 30),
     },
   });
 
   revalidatePath("/clients");
   revalidatePath("/dashboard");
+
+  redirect("/clients?saved=updated");
 }
 
 export async function deleteClientAction(formData: FormData) {
@@ -116,4 +138,6 @@ export async function deleteClientAction(formData: FormData) {
 
   revalidatePath("/clients");
   revalidatePath("/dashboard");
+
+  redirect("/clients?saved=deleted");
 }

@@ -1,11 +1,23 @@
-﻿import { requireUser } from "@/lib/require-auth";
-import { requireCompanyProfileCompleted } from "@/lib/onboarding";
+﻿import Link from "next/link";
+
 import { AppShell } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
-import { createClientAction, deleteClientAction, updateClientAction } from "@/app/clients/actions";
+import {
+  createClientAction,
+  deleteClientAction,
+  updateClientAction,
+} from "@/app/clients/actions";
+import { requireCompanyProfileCompleted } from "@/lib/onboarding";
+import { requireUser } from "@/lib/require-auth";
 import { getClients, getClientStats } from "@/lib/client-queries";
 
 export const dynamic = "force-dynamic";
+
+type ClientsPageProps = {
+  searchParams?: Promise<{
+    saved?: string;
+  }>;
+};
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("fr-FR", {
@@ -15,22 +27,111 @@ function formatDate(date: Date) {
   }).format(date);
 }
 
+function getSavedMessage(saved?: string) {
+  if (saved === "created") {
+    return {
+      title: "Client enregistré",
+      message:
+        "Le client a bien été ajouté. Tu peux maintenant créer une mission ou préparer une facture.",
+    };
+  }
 
-export default async function ClientsPage() {
+  if (saved === "updated") {
+    return {
+      title: "Client mis à jour",
+      message: "Les informations du client ont bien été sauvegardées.",
+    };
+  }
+
+  if (saved === "deleted") {
+    return {
+      title: "Client supprimé",
+      message: "Le client a bien été retiré de ta base.",
+    };
+  }
+
+  return null;
+}
+
+export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   await requireUser();
   await requireCompanyProfileCompleted();
+
+  const params = await searchParams;
+  const savedMessage = getSavedMessage(params?.saved);
+
   const [clients, stats] = await Promise.all([getClients(), getClientStats()]);
 
   return (
     <AppShell
       title="Clients"
-      subtitle="Gestion réelle des clients connectée à PostgreSQL avec Prisma."
+      subtitle="Gère tes clients, leurs coordonnées de facturation et le parcours vers missions et factures."
     >
       <div className="grid gap-5 md:grid-cols-3">
-        <StatCard label="Clients" value={`${stats.clientCount}`} helper="Enregistrés en base" />
-        <StatCard label="Missions" value={`${stats.missionCount}`} helper="Liées aux clients" />
-        <StatCard label="Factures" value={`${stats.invoiceCount}`} helper="Historique client" />
+        <StatCard
+          label="Clients"
+          value={`${stats.clientCount}`}
+          helper="Enregistrés en base"
+        />
+        <StatCard
+          label="Missions"
+          value={`${stats.missionCount}`}
+          helper="Liées aux clients"
+        />
+        <StatCard
+          label="Factures"
+          value={`${stats.invoiceCount}`}
+          helper="Historique client"
+        />
       </div>
+
+      {savedMessage && (
+        <section className="mt-6 rounded-[2rem] border border-emerald-200 bg-emerald-50 p-5 text-emerald-900">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-lg font-black">{savedMessage.title}</p>
+              <p className="mt-1 text-sm leading-6">{savedMessage.message}</p>
+            </div>
+
+            <span className="w-fit rounded-full bg-white px-4 py-2 text-sm font-black text-emerald-700 ring-1 ring-emerald-100">
+              Sauvegarde OK
+            </span>
+          </div>
+        </section>
+      )}
+
+      <section className="mt-6 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.25em] text-[var(--primary)]">
+              Parcours client
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-slate-950">
+              Client → mission → facture
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+              Commence par enregistrer un client proprement. Ensuite, ajoute les
+              missions réalisées pour ce client, puis génère la facture depuis
+              les missions validées.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/missions"
+              className="rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-black text-slate-800 transition hover:bg-white"
+            >
+              Aller aux missions
+            </Link>
+            <Link
+              href="/factures"
+              className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5"
+            >
+              Aller aux factures
+            </Link>
+          </div>
+        </div>
+      </section>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
         <section className="card rounded-[2rem] p-6">
@@ -40,16 +141,43 @@ export default async function ClientsPage() {
             </p>
             <h2 className="mt-2 text-2xl font-black">Ajouter un client</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Renseigne les informations principales de ton client pour pouvoir créer des missions et générer des factures.
+              Renseigne les informations principales du client. Le nom légal et
+              l'adresse sont obligatoires pour créer des documents propres.
             </p>
           </div>
 
           <form action={createClientAction} className="grid gap-4">
-            <input className="input" name="legalName" placeholder="Raison sociale *" required />
+            <input
+              className="input"
+              name="legalName"
+              placeholder="Raison sociale *"
+              required
+            />
             <input className="input" name="contactName" placeholder="Contact" />
-            <input className="input" name="email" type="email" placeholder="Email facturation" />
-            <input className="input" name="phone" placeholder="Téléphone" />
-            <input className="input" name="addressLine1" placeholder="Adresse *" required />
+            <input
+              className="input"
+              name="email"
+              type="email"
+              placeholder="Email facturation"
+              autoComplete="email"
+            />
+            <input
+              className="input"
+              name="phone"
+              placeholder="Téléphone"
+              autoComplete="tel"
+            />
+            <input
+              className="input"
+              name="addressLine1"
+              placeholder="Adresse *"
+              required
+            />
+            <input
+              className="input"
+              name="addressLine2"
+              placeholder="Complément d'adresse"
+            />
 
             <div className="grid gap-4 md:grid-cols-3">
               <input className="input" name="postalCode" placeholder="Code postal" />
@@ -64,8 +192,19 @@ export default async function ClientsPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <input className="input" name="vatNumber" placeholder="N° TVA intracommunautaire" />
-              <input className="input" name="paymentTermsDays" type="number" min="0" defaultValue="30" placeholder="Délai paiement" />
+              <input
+                className="input"
+                name="vatNumber"
+                placeholder="N° TVA intracommunautaire"
+              />
+              <input
+                className="input"
+                name="paymentTermsDays"
+                type="number"
+                min="0"
+                defaultValue="30"
+                placeholder="Délai paiement"
+              />
             </div>
 
             <button className="rounded-full bg-[var(--primary)] px-6 py-4 font-bold text-white shadow-xl transition hover:-translate-y-0.5">
@@ -96,34 +235,53 @@ export default async function ClientsPage() {
                 Aucun client enregistré
               </p>
               <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600">
-                Ajoute ton premier client pour commencer à créer des missions, suivre tes heures et générer tes factures.
+                Ajoute ton premier client pour commencer à créer des missions,
+                suivre tes heures et générer tes factures.
               </p>
               <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-left text-sm leading-6 text-slate-600">
                 <p className="font-bold text-slate-900">Conseil :</p>
-                <p>Commence par renseigner le nom légal, l’adresse, le code postal et la ville du client.</p>
+                <p>
+                  Commence par renseigner le nom légal, l'adresse, le code
+                  postal et la ville du client.
+                </p>
               </div>
             </div>
           ) : (
             <div className="space-y-5">
               {clients.map((client) => (
-                <article key={client.id} className="rounded-[1.5rem] border border-slate-100 bg-white/85 p-5">
+                <article
+                  key={client.id}
+                  className="rounded-[1.5rem] border border-slate-100 bg-white/85 p-5"
+                >
                   <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
                     <div>
                       <h3 className="text-xl font-black">{client.legalName}</h3>
                       <p className="mt-1 text-sm text-slate-600">
                         {client.addressLine1}
-                        {client.postalCode || client.city ? `, ${client.postalCode ?? ""} ${client.city ?? ""}` : ""}
+                        {client.postalCode || client.city
+                          ? `, ${client.postalCode ?? ""} ${client.city ?? ""}`
+                          : ""}
                       </p>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        {client.siret && <span className="badge bg-slate-100 text-slate-700">SIRET : {client.siret}</span>}
-                        {client.ape && <span className="badge bg-slate-100 text-slate-700">APE : {client.ape}</span>}
-                        <span className="badge bg-emerald-50 text-emerald-700">Créé le {formatDate(client.createdAt)}</span>
+                        {client.siret && (
+                          <span className="badge bg-slate-100 text-slate-700">
+                            SIRET : {client.siret}
+                          </span>
+                        )}
+                        {client.ape && (
+                          <span className="badge bg-slate-100 text-slate-700">
+                            APE : {client.ape}
+                          </span>
+                        )}
+                        <span className="badge bg-emerald-50 text-emerald-700">
+                          Créé le {formatDate(client.createdAt)}
+                        </span>
                       </div>
                     </div>
 
                     <form action={deleteClientAction}>
                       <input type="hidden" name="id" value={client.id} />
-                      <button className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-700">
+                      <button className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-100">
                         Supprimer
                       </button>
                     </form>
@@ -136,30 +294,105 @@ export default async function ClientsPage() {
 
                     <form action={updateClientAction} className="mt-5 grid gap-4">
                       <input type="hidden" name="id" value={client.id} />
-                      <input className="input" name="legalName" defaultValue={client.legalName} required />
-                      <input className="input" name="contactName" defaultValue={client.contactName ?? ""} placeholder="Contact" />
-                      <input className="input" name="email" type="email" defaultValue={client.email ?? ""} placeholder="Email" />
-                      <input className="input" name="phone" defaultValue={client.phone ?? ""} placeholder="Téléphone" />
-                      <input className="input" name="addressLine1" defaultValue={client.addressLine1} required />
+                      <input
+                        className="input"
+                        name="legalName"
+                        defaultValue={client.legalName}
+                        required
+                      />
+                      <input
+                        className="input"
+                        name="contactName"
+                        defaultValue={client.contactName ?? ""}
+                        placeholder="Contact"
+                      />
+                      <input
+                        className="input"
+                        name="email"
+                        type="email"
+                        defaultValue={client.email ?? ""}
+                        placeholder="Email"
+                        autoComplete="email"
+                      />
+                      <input
+                        className="input"
+                        name="phone"
+                        defaultValue={client.phone ?? ""}
+                        placeholder="Téléphone"
+                        autoComplete="tel"
+                      />
+                      <input
+                        className="input"
+                        name="addressLine1"
+                        defaultValue={client.addressLine1}
+                        required
+                      />
+                      <input
+                        className="input"
+                        name="addressLine2"
+                        defaultValue={client.addressLine2 ?? ""}
+                        placeholder="Complément d'adresse"
+                      />
 
                       <div className="grid gap-4 md:grid-cols-3">
-                        <input className="input" name="postalCode" defaultValue={client.postalCode ?? ""} placeholder="Code postal" />
-                        <input className="input" name="city" defaultValue={client.city ?? ""} placeholder="Ville" />
-                        <input className="input" name="country" defaultValue={client.country ?? "FR"} placeholder="Pays" />
+                        <input
+                          className="input"
+                          name="postalCode"
+                          defaultValue={client.postalCode ?? ""}
+                          placeholder="Code postal"
+                        />
+                        <input
+                          className="input"
+                          name="city"
+                          defaultValue={client.city ?? ""}
+                          placeholder="Ville"
+                        />
+                        <input
+                          className="input"
+                          name="country"
+                          defaultValue={client.country ?? "FR"}
+                          placeholder="Pays"
+                        />
                       </div>
 
                       <div className="grid gap-4 md:grid-cols-3">
-                        <input className="input" name="siren" defaultValue={client.siren ?? ""} placeholder="SIREN" />
-                        <input className="input" name="siret" defaultValue={client.siret ?? ""} placeholder="SIRET" />
-                        <input className="input" name="ape" defaultValue={client.ape ?? ""} placeholder="APE / NAF" />
+                        <input
+                          className="input"
+                          name="siren"
+                          defaultValue={client.siren ?? ""}
+                          placeholder="SIREN"
+                        />
+                        <input
+                          className="input"
+                          name="siret"
+                          defaultValue={client.siret ?? ""}
+                          placeholder="SIRET"
+                        />
+                        <input
+                          className="input"
+                          name="ape"
+                          defaultValue={client.ape ?? ""}
+                          placeholder="APE / NAF"
+                        />
                       </div>
 
                       <div className="grid gap-4 md:grid-cols-2">
-                        <input className="input" name="vatNumber" defaultValue={client.vatNumber ?? ""} placeholder="N° TVA" />
-                        <input className="input" name="paymentTermsDays" type="number" min="0" defaultValue={client.paymentTermsDays} />
+                        <input
+                          className="input"
+                          name="vatNumber"
+                          defaultValue={client.vatNumber ?? ""}
+                          placeholder="N° TVA"
+                        />
+                        <input
+                          className="input"
+                          name="paymentTermsDays"
+                          type="number"
+                          min="0"
+                          defaultValue={client.paymentTermsDays}
+                        />
                       </div>
 
-                      <button className="rounded-full bg-slate-950 px-6 py-3 font-bold text-white">
+                      <button className="rounded-full bg-slate-950 px-6 py-3 font-bold text-white transition hover:-translate-y-0.5">
                         Sauvegarder les modifications
                       </button>
                     </form>
@@ -173,6 +406,3 @@ export default async function ClientsPage() {
     </AppShell>
   );
 }
-
-
-
