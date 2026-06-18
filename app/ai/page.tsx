@@ -1,4 +1,5 @@
 ﻿import { requireUser } from "@/lib/require-auth";
+import { requireCompanyProfileCompleted } from "@/lib/onboarding";
 import { AppShell } from "@/components/AppShell";
 import { AiTimesheetExtractor } from "@/components/ai/AiTimesheetExtractor";
 import { getCurrentOrganization } from "@/lib/current-organization";
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AiPage() {
   await requireUser();
+  await requireCompanyProfileCompleted();
 
   const organization = await getCurrentOrganization();
 
