@@ -2,6 +2,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { UrssafActivity, VatRegime } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
@@ -41,6 +42,7 @@ function numberFromForm(formData: FormData, key: string, defaultValue: number) {
 
 export async function updateSettingsAction(formData: FormData) {
   const organization = await getCurrentOrganization();
+  const redirectTo = optionalString(formData.get("redirectTo"));
 
   const profileId = optionalString(formData.get("profileId"));
 
@@ -122,5 +124,9 @@ export async function updateSettingsAction(formData: FormData) {
   revalidatePath("/parametres");
   revalidatePath("/factures");
   revalidatePath("/dashboard");
+
+  if (redirectTo && redirectTo.startsWith("/")) {
+    redirect(redirectTo);
+  }
 }
 

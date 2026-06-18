@@ -5,12 +5,24 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/require-auth";
 import { updateSettingsAction } from "./actions";
 
+type ParametresPageProps = {
+  searchParams?: Promise<{
+    onboarding?: string;
+  }>;
+};
+
 export const dynamic = "force-dynamic";
 
-export default async function ParametresPage() {
+export default async function ParametresPage({
+  searchParams,
+}: ParametresPageProps) {
   await requireUser();
 
   const organization = await getCurrentOrganization();
+
+  const params = await searchParams;
+  const onboardingRequired = params?.onboarding === "required";
+
 
   const profile =
     (await prisma.companyProfile.findFirst({
@@ -37,6 +49,23 @@ export default async function ParametresPage() {
       subtitle="Informations de l’émetteur, coordonnées bancaires et préférences document."
     >
       <form action={updateSettingsAction} className="grid gap-6">
+
+        <input
+          type="hidden"
+          name="redirectTo"
+          value={onboardingRequired ? "/dashboard" : ""}
+        />
+
+        {onboardingRequired && (
+          <div className="rounded-[2rem] border border-amber-200 bg-amber-50 p-5 text-amber-900">
+            <p className="text-lg font-black">Profil entreprise requis</p>
+            <p className="mt-2 text-sm leading-6">
+              Complète les informations obligatoires de ton entreprise pour accéder au dashboard,
+              créer des clients, saisir des missions et générer tes factures.
+            </p>
+          </div>
+        )}
+        
         <input type="hidden" name="profileId" value={profile?.id ?? ""} />
 
         <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">

@@ -1,4 +1,4 @@
-
+﻿
 "use server";
 
 import bcrypt from "bcryptjs";
@@ -51,7 +51,7 @@ export async function registerAction(formData: FormData) {
   await signIn("credentials", {
     email,
     password,
-    redirectTo: "/parametres",
+    redirectTo: "/parametres?onboarding=required",
   });
 }
 
@@ -83,4 +83,5 @@ export async function logoutAction() {
     redirectTo: "/connexion",
   });
 }
+
 
