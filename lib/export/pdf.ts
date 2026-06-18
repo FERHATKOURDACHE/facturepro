@@ -1,4 +1,4 @@
-import {
+﻿import {
   PDFDocument,
   StandardFonts,
   rgb,
@@ -26,8 +26,30 @@ type TextOptions = {
   maxWidth?: number;
 };
 
-function drawText(page: PDFPage, text: string, options: TextOptions) {
-  page.drawText(safeText(text), {
+const PAGE_WIDTH = 595.28;
+const PAGE_HEIGHT = 841.89;
+const MARGIN = 42;
+
+function safeText(value: unknown) {
+  return String(value ?? "-")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\u202f/g, " ")
+    .replace(/\u00a0/g, " ")
+    .replace(/\u20ac/g, "EUR")
+    .replace(/[’‘]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[–—]/g, "-")
+    .replace(/[•]/g, "-")
+    .replace(/[^\x20-\x7E]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function drawText(page: PDFPage, text: unknown, options: TextOptions) {
+  const cleaned = safeText(text);
+
+  page.drawText(cleaned.length > 0 ? cleaned : "-", {
     x: options.x,
     y: options.y,
     size: options.size ?? 10,
@@ -37,400 +59,404 @@ function drawText(page: PDFPage, text: string, options: TextOptions) {
   });
 }
 
-function safeText(text: string) {
-  return text
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\u202f/g, " ")
-    .replace(/\u00a0/g, " ")
-    .replace(/€/g, "EUR")
-    .replace(/’/g, "'")
-    .replace(/‘/g, "'")
-    .replace(/“/g, '"')
-    .replace(/”/g, '"')
-    .replace(/œ/g, "oe")
-    .replace(/Œ/g, "OE")
-    .replace(/ç/g, "c")
-    .replace(/Ç/g, "C")
-    .replace(/–/g, "-")
-    .replace(/—/g, "-")
-    .replace(/[^\x20-\x7E\n\r\t]/g, "");
-}
+function drawWrappedText(
+  page: PDFPage,
+  text: unknown,
+  options: TextOptions & { lineHeight?: number }
+) {
+  const cleaned = safeText(text);
+  const size = options.size ?? 10;
+  const lineHeight = options.lineHeight ?? size + 4;
+  const maxWidth = options.maxWidth ?? 240;
+  const font = options.font;
+  const words = cleaned.split(" ");
+  const lines: string[] = [];
+  let current = "";
 
-function truncate(text: string, max = 90) {
-  const clean = safeText(text);
-  return clean.length > max ? `${clean.slice(0, max - 3)}...` : clean;
-}
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    const width = font?.widthOfTextAtSize(candidate, size) ?? candidate.length * size * 0.5;
 
-function drawBox(page: PDFPage, params: {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  title: string;
-  lines: string[];
-  regular: PDFFont;
-  bold: PDFFont;
-}) {
-  page.drawRectangle({
-    x: params.x,
-    y: params.y,
-    width: params.width,
-    height: params.height,
-    color: rgb(0.97, 0.99, 0.97),
-    borderColor: rgb(0.84, 0.91, 0.86),
-    borderWidth: 1,
-  });
-
-  drawText(page, params.title.toUpperCase(), {
-    x: params.x + 12,
-    y: params.y + params.height - 18,
-    size: 8,
-    font: params.bold,
-    color: rgb(0.04, 0.48, 0.23),
-  });
-
-  let currentY = params.y + params.height - 34;
-  for (const line of params.lines.filter(Boolean)) {
-    drawText(page, truncate(line, 42), {
-      x: params.x + 12,
-      y: currentY,
-      size: 8,
-      font: params.regular,
-      maxWidth: params.width - 24,
-    });
-    currentY -= 13;
+    if (width > maxWidth && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = candidate;
+    }
   }
+
+  if (current) lines.push(current);
+
+  lines.forEach((line, index) => {
+    drawText(page, line, {
+      ...options,
+      y: options.y - index * lineHeight,
+      maxWidth,
+    });
+  });
+
+  return lines.length * lineHeight;
+}
+
+function unitLabel(unit: string) {
+  if (unit === "HOUR") return "Heures";
+  if (unit === "DAY") return "Jours";
+  if (unit === "UNIT") return "Unites";
+  if (unit === "FIXED_PRICE") return "Forfait";
+
+  return unit;
+}
+
+function statusLabel(status: string) {
+  const labels: Record<string, string> = {
+    DRAFT: "Brouillon",
+    READY: "Prete",
+    SENT: "Envoyee",
+    PARTIALLY_PAID: "Partiellement payee",
+    PAID: "Payee",
+    OVERDUE: "En retard",
+    CANCELLED: "Annulee",
+  };
+
+  return labels[status] ?? status;
+}
+
+function paymentMethodLabel(method: string) {
+  const labels: Record<string, string> = {
+    BANK_TRANSFER: "Virement",
+    CARD: "Carte",
+    CASH: "Especes",
+    CHECK: "Cheque",
+    OTHER: "Autre",
+  };
+
+  return labels[method] ?? method;
+}
+
+function addressBlock(parts: Array<string | null | undefined>) {
+  return parts.filter(Boolean).join(" - ");
 }
 
 export async function generateInvoicePdf(data: InvoiceExportData) {
-  const { invoice } = data;
+  const { invoice, organization } = data;
+  const profile = invoice.profile;
+  const client = invoice.client;
 
   const pdf = await PDFDocument.create();
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-  let page = pdf.addPage([595.28, 841.89]);
-  const dark = rgb(0.07, 0.09, 0.15);
-  const primary = rgb(0.04, 0.48, 0.23);
-  const light = rgb(0.95, 0.98, 0.96);
-  const muted = rgb(0.4, 0.45, 0.52);
+  let page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  let y = PAGE_HEIGHT - MARGIN;
 
-  page.drawRectangle({
-    x: 0,
-    y: 735,
-    width: 595.28,
-    height: 106.89,
-    color: light,
-  });
+  function ensureSpace(height = 80) {
+    if (y < MARGIN + height) {
+      page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+      y = PAGE_HEIGHT - MARGIN;
+    }
+  }
+
+  function sectionTitle(title: string) {
+    ensureSpace(40);
+    drawText(page, title, {
+      x: MARGIN,
+      y,
+      size: 12,
+      font: bold,
+      color: rgb(0.04, 0.35, 0.19),
+    });
+    y -= 22;
+  }
 
   drawText(page, "FACTURE", {
-    x: 42,
-    y: 785,
-    size: 26,
+    x: MARGIN,
+    y,
+    size: 24,
     font: bold,
-    color: primary,
+    color: rgb(0.05, 0.07, 0.12),
   });
 
   drawText(page, invoice.number, {
-    x: 42,
-    y: 762,
-    size: 15,
+    x: PAGE_WIDTH - 230,
+    y: y + 4,
+    size: 16,
     font: bold,
-    color: dark,
+    color: rgb(0.05, 0.07, 0.12),
   });
 
-  drawText(page, `Date emission : ${formatDate(invoice.issueDate)}`, {
-    x: 378,
-    y: 782,
-    size: 8,
-    font: regular,
-    color: muted,
+  y -= 34;
+
+  drawText(page, `Statut : ${statusLabel(invoice.status)}`, {
+    x: MARGIN,
+    y,
+    size: 10,
+    font: bold,
+    color: rgb(0.04, 0.35, 0.19),
   });
+
+  drawText(page, `Emise le : ${formatDate(invoice.issueDate)}`, {
+    x: PAGE_WIDTH - 230,
+    y,
+    size: 10,
+    font: regular,
+  });
+
+  y -= 16;
 
   drawText(page, `Echeance : ${formatDate(invoice.dueDate)}`, {
-    x: 378,
-    y: 768,
-    size: 8,
+    x: PAGE_WIDTH - 230,
+    y,
+    size: 10,
     font: regular,
-    color: muted,
   });
 
-  const profile = invoice.profile;
+  y -= 32;
 
-  drawBox(page, {
-    x: 42,
-    y: 620,
-    width: 245,
-    height: 95,
-    title: "Emetteur",
-    regular,
-    bold,
-    lines: [
-      profile?.legalName ?? data.organization.name,
-      profile ? `${profile.addressLine1}, ${profile.postalCode} ${profile.city}` : "",
-      profile?.siret ? `SIRET : ${profile.siret}` : "",
-      profile?.ape ? `APE : ${profile.ape}` : "",
-      profile?.email ? `Email : ${profile.email}` : "",
-      profile?.phone ? `Telephone : ${profile.phone}` : "",
-    ],
+  page.drawLine({
+    start: { x: MARGIN, y },
+    end: { x: PAGE_WIDTH - MARGIN, y },
+    thickness: 1,
+    color: rgb(0.86, 0.9, 0.88),
   });
 
-  drawBox(page, {
-    x: 308,
-    y: 620,
-    width: 245,
-    height: 95,
-    title: "Destinataire",
-    regular,
-    bold,
-    lines: [
-      invoice.client.legalName,
-      `${invoice.client.addressLine1}, ${invoice.client.postalCode ?? ""} ${invoice.client.city ?? ""}`,
-      invoice.client.siret ? `SIRET : ${invoice.client.siret}` : "",
-      invoice.client.ape ? `APE : ${invoice.client.ape}` : "",
-      invoice.client.email ? `Email : ${invoice.client.email}` : "",
-    ],
-  });
+  y -= 28;
 
-  drawText(page, "Detail des prestations", {
-    x: 42,
-    y: 585,
+  sectionTitle("Emetteur");
+
+  drawText(page, profile?.legalName ?? organization.name, {
+    x: MARGIN,
+    y,
     size: 12,
     font: bold,
-    color: dark,
   });
+  y -= 15;
 
-  let y = 555;
-  page.drawRectangle({
-    x: 42,
-    y,
-    width: 510,
-    height: 24,
-    color: dark,
-  });
+  const profileAddress = addressBlock([
+    profile?.addressLine1,
+    profile?.addressLine2,
+    profile?.postalCode,
+    profile?.city,
+    profile?.country,
+  ]);
 
-  const headers = [
-    ["Designation", 52, 562],
-    ["Qte", 285, 562],
-    ["Unite", 350, 562],
-    ["PU", 415, 562],
-    ["Total", 493, 562],
-  ];
-
-  for (const [label, x, yy] of headers) {
-    drawText(page, String(label), {
-      x: Number(x),
-      y: Number(yy),
-      size: 8,
-      font: bold,
-      color: rgb(1, 1, 1),
+  if (profileAddress) {
+    y -= drawWrappedText(page, profileAddress, {
+      x: MARGIN,
+      y,
+      size: 9,
+      font: regular,
+      maxWidth: 230,
+      lineHeight: 12,
     });
   }
 
-  y -= 30;
+  const profileDetails = [
+    profile?.siret ? `SIRET : ${profile.siret}` : null,
+    profile?.siren ? `SIREN : ${profile.siren}` : null,
+    profile?.email ? `Email : ${profile.email}` : null,
+    profile?.phone ? `Tel : ${profile.phone}` : null,
+  ].filter(Boolean);
+
+  for (const detail of profileDetails) {
+    drawText(page, detail, { x: MARGIN, y, size: 9, font: regular });
+    y -= 12;
+  }
+
+  y -= 12;
+
+  sectionTitle("Client");
+
+  drawText(page, client.legalName, {
+    x: MARGIN,
+    y,
+    size: 12,
+    font: bold,
+  });
+  y -= 15;
+
+  const clientAddress = addressBlock([
+    client.addressLine1,
+    client.addressLine2,
+    client.postalCode,
+    client.city,
+    client.country,
+  ]);
+
+  if (clientAddress) {
+    y -= drawWrappedText(page, clientAddress, {
+      x: MARGIN,
+      y,
+      size: 9,
+      font: regular,
+      maxWidth: 260,
+      lineHeight: 12,
+    });
+  }
+
+  const clientDetails = [
+    client.siret ? `SIRET : ${client.siret}` : null,
+    client.email ? `Email : ${client.email}` : null,
+    client.phone ? `Tel : ${client.phone}` : null,
+  ].filter(Boolean);
+
+  for (const detail of clientDetails) {
+    drawText(page, detail, { x: MARGIN, y, size: 9, font: regular });
+    y -= 12;
+  }
+
+  y -= 15;
+
+  sectionTitle("Periode et lignes");
+
+  drawText(page, `Periode : ${formatDate(invoice.periodStart)} au ${formatDate(invoice.periodEnd)}`, {
+    x: MARGIN,
+    y,
+    size: 10,
+    font: regular,
+  });
+  y -= 22;
+
+  const headers = [
+    ["Ligne", MARGIN],
+    ["Qte", 285],
+    ["Unite", 340],
+    ["PU", 405],
+    ["Total", 485],
+  ] as const;
+
+  headers.forEach(([label, x]) => {
+    drawText(page, label, { x, y, size: 9, font: bold, color: rgb(0.29, 0.33, 0.41) });
+  });
+
+  y -= 14;
+
+  page.drawLine({
+    start: { x: MARGIN, y },
+    end: { x: PAGE_WIDTH - MARGIN, y },
+    thickness: 0.7,
+    color: rgb(0.86, 0.9, 0.88),
+  });
+
+  y -= 16;
 
   for (const line of invoice.lines) {
-    if (y < 120) {
-      page = pdf.addPage([595.28, 841.89]);
-      y = 780;
-    }
+    ensureSpace(48);
 
-    page.drawRectangle({
-      x: 42,
-      y: y - 6,
-      width: 510,
-      height: 28,
-      color: rgb(0.98, 0.99, 0.98),
-      borderColor: rgb(0.9, 0.93, 0.9),
-      borderWidth: 0.5,
-    });
+    const quantity = money(line.quantity);
+    const quantityLabel =
+      line.unit === "HOUR" ? formatHours(quantity) : String(quantity);
 
-    drawText(page, truncate(line.label, 58), {
-      x: 52,
-      y: y + 7,
-      size: 8,
+    drawWrappedText(page, line.label, {
+      x: MARGIN,
+      y,
+      size: 9,
       font: bold,
+      maxWidth: 220,
+      lineHeight: 11,
     });
 
     if (line.description) {
-      drawText(page, truncate(line.description, 62), {
-        x: 52,
-        y: y - 4,
-        size: 7,
+      drawWrappedText(page, line.description, {
+        x: MARGIN,
+        y: y - 13,
+        size: 8,
         font: regular,
-        color: muted,
+        color: rgb(0.39, 0.45, 0.55),
+        maxWidth: 220,
+        lineHeight: 10,
       });
     }
 
-    drawText(page, line.unit === "HOUR" ? formatHours(money(line.quantity)) : String(money(line.quantity)), {
-      x: 285,
-      y: y + 2,
-      size: 8,
-      font: regular,
-    });
+    drawText(page, quantityLabel, { x: 285, y, size: 9, font: regular });
+    drawText(page, unitLabel(line.unit), { x: 340, y, size: 9, font: regular });
+    drawText(page, formatCurrency(money(line.unitPrice)), { x: 405, y, size: 9, font: regular });
+    drawText(page, formatCurrency(money(line.total)), { x: 485, y, size: 9, font: bold });
 
-    drawText(page, line.unit, {
-      x: 350,
-      y: y + 2,
-      size: 8,
-      font: regular,
-    });
-
-    drawText(page, formatCurrency(money(line.unitPrice)), {
-      x: 410,
-      y: y + 2,
-      size: 8,
-      font: regular,
-    });
-
-    drawText(page, formatCurrency(money(line.total)), {
-      x: 485,
-      y: y + 2,
-      size: 8,
-      font: bold,
-    });
-
-    y -= 34;
+    y -= line.description ? 36 : 24;
   }
 
   y -= 10;
 
-  const totalRows = [
-    ["Sous-total", money(invoice.subtotal)],
-    ["TVA", money(invoice.vatAmount)],
-    ["Total a payer", money(invoice.total)],
-  ];
+  const paidAmount = invoice.payments.reduce(
+    (sum, payment) => sum + money(payment.amount),
+    0
+  );
+  const remainingAmount = Math.max(0, money(invoice.total) - paidAmount);
 
-  for (const [label, value] of totalRows) {
-    const isTotal = label === "Total a payer";
-    page.drawRectangle({
-      x: 350,
-      y,
-      width: 202,
-      height: 24,
-      color: isTotal ? primary : rgb(0.97, 0.99, 0.97),
-    });
+  ensureSpace(100);
 
-    drawText(page, String(label), {
-      x: 362,
-      y: y + 8,
-      size: isTotal ? 10 : 8,
-      font: isTotal ? bold : regular,
-      color: isTotal ? rgb(1, 1, 1) : muted,
-    });
+  const totalX = 360;
 
-    drawText(page, formatCurrency(Number(value)), {
-      x: 462,
-      y: y + 8,
-      size: isTotal ? 10 : 8,
-      font: bold,
-      color: isTotal ? rgb(1, 1, 1) : dark,
-    });
+  drawText(page, "Sous-total", { x: totalX, y, size: 10, font: regular });
+  drawText(page, formatCurrency(money(invoice.subtotal)), { x: 485, y, size: 10, font: regular });
+  y -= 16;
 
-    y -= 26;
-  }
-
-  if (y < 180) {
-    page = pdf.addPage([595.28, 841.89]);
-    y = 780;
-  }
-
-  drawText(page, "Feuille de temps rattachee", {
-    x: 42,
-    y: y - 10,
-    size: 12,
-    font: bold,
+  drawText(page, `TVA (${Math.round(money(invoice.vatRate) * 100)}%)`, {
+    x: totalX,
+    y,
+    size: 10,
+    font: regular,
   });
+  drawText(page, formatCurrency(money(invoice.vatAmount)), { x: 485, y, size: 10, font: regular });
+  y -= 16;
 
-  y -= 35;
+  drawText(page, "Total", { x: totalX, y, size: 12, font: bold });
+  drawText(page, formatCurrency(money(invoice.total)), { x: 485, y, size: 12, font: bold });
+  y -= 16;
 
-  for (const mission of invoice.missions) {
-    if (y < 80) {
-      page = pdf.addPage([595.28, 841.89]);
-      y = 780;
+  drawText(page, "Deja paye", { x: totalX, y, size: 10, font: regular });
+  drawText(page, formatCurrency(paidAmount), { x: 485, y, size: 10, font: regular });
+  y -= 16;
+
+  drawText(page, "Reste a payer", { x: totalX, y, size: 11, font: bold, color: rgb(0.04, 0.35, 0.19) });
+  drawText(page, formatCurrency(remainingAmount), { x: 485, y, size: 11, font: bold, color: rgb(0.04, 0.35, 0.19) });
+
+  y -= 34;
+
+  if (invoice.missions.length > 0) {
+    sectionTitle("Missions rattachees");
+
+    for (const mission of invoice.missions) {
+      ensureSpace(24);
+      drawText(
+        page,
+        `${formatDate(mission.date)} - ${formatTime(mission.startTime)} / ${formatTime(mission.endTime)} - ${mission.locationName ?? "Mission"} - ${formatHours(money(mission.quantityHours))}`,
+        { x: MARGIN, y, size: 9, font: regular, maxWidth: 500 }
+      );
+      y -= 14;
     }
 
-    page.drawRectangle({
-      x: 42,
-      y: y - 6,
-      width: 510,
-      height: 22,
-      color: rgb(0.97, 0.99, 0.97),
-    });
-
-    drawText(page, formatDate(mission.date), {
-      x: 52,
-      y,
-      size: 8,
-      font: regular,
-    });
-
-    drawText(page, `${formatTime(mission.startTime)} - ${formatTime(mission.endTime)}`, {
-      x: 126,
-      y,
-      size: 8,
-      font: regular,
-    });
-
-    drawText(page, truncate(mission.locationName ?? "-", 45), {
-      x: 226,
-      y,
-      size: 8,
-      font: regular,
-    });
-
-    drawText(page, formatHours(money(mission.quantityHours)), {
-      x: 500,
-      y,
-      size: 8,
-      font: bold,
-    });
-
-    y -= 25;
+    y -= 10;
   }
 
-  if (profile?.iban) {
-    if (y < 90) {
-      page = pdf.addPage([595.28, 841.89]);
-      y = 780;
+  if (invoice.payments.length > 0) {
+    sectionTitle("Paiements");
+
+    for (const payment of invoice.payments) {
+      ensureSpace(24);
+      drawText(
+        page,
+        `${formatDate(payment.paidAt)} - ${paymentMethodLabel(payment.method)} - ${formatCurrency(money(payment.amount))}${payment.reference ? ` - Ref: ${payment.reference}` : ""}`,
+        { x: MARGIN, y, size: 9, font: regular, maxWidth: 500 }
+      );
+      y -= 14;
     }
 
-    page.drawRectangle({
-      x: 42,
-      y: y - 36,
-      width: 510,
-      height: 42,
-      color: rgb(1, 0.98, 0.92),
-    });
+    y -= 10;
+  }
 
-    drawText(page, "Coordonnees bancaires", {
-      x: 54,
-      y: y - 10,
+  if (invoice.legalNotice || profile?.invoiceLegalNotice) {
+    sectionTitle("Mention legale");
+    drawWrappedText(page, invoice.legalNotice ?? profile?.invoiceLegalNotice ?? "", {
+      x: MARGIN,
+      y,
       size: 9,
-      font: bold,
-    });
-
-    drawText(page, `IBAN : ${profile.iban}`, {
-      x: 54,
-      y: y - 25,
-      size: 8,
       font: regular,
-    });
-
-    y -= 55;
-  }
-
-  if (invoice.legalNotice) {
-    drawText(page, truncate(invoice.legalNotice, 110), {
-      x: 42,
-      y: Math.max(y, 45),
-      size: 8,
-      font: regular,
-      color: muted,
+      color: rgb(0.39, 0.45, 0.55),
+      maxWidth: PAGE_WIDTH - MARGIN * 2,
+      lineHeight: 12,
     });
   }
 
-  const bytes = await pdf.save();
-  return Buffer.from(bytes);
+  return pdf.save();
 }

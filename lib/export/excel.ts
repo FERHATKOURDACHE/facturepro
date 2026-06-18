@@ -1,145 +1,199 @@
-import ExcelJS from "exceljs";
+﻿import ExcelJS from "exceljs";
 import {
+  formatCurrency,
   formatDate,
+  formatHours,
   formatTime,
   money,
 } from "@/lib/export/invoice-data";
 
-type InvoiceExportData = Awaited<ReturnType<typeof import("@/lib/export/invoice-data").getInvoiceExportData>>;
+type InvoiceExportData = Awaited<
+  ReturnType<typeof import("@/lib/export/invoice-data").getInvoiceExportData>
+>;
+
+function unitLabel(unit: string) {
+  if (unit === "HOUR") return "Heures";
+  if (unit === "DAY") return "Jours";
+  if (unit === "UNIT") return "Unités";
+  if (unit === "FIXED_PRICE") return "Forfait";
+
+  return unit;
+}
+
+function statusLabel(status: string) {
+  const labels: Record<string, string> = {
+    DRAFT: "Brouillon",
+    READY: "Prête",
+    SENT: "Envoyée",
+    PARTIALLY_PAID: "Partiellement payée",
+    PAID: "Payée",
+    OVERDUE: "En retard",
+    CANCELLED: "Annulée",
+  };
+
+  return labels[status] ?? status;
+}
+
+function paymentMethodLabel(method: string) {
+  const labels: Record<string, string> = {
+    BANK_TRANSFER: "Virement bancaire",
+    CARD: "Carte bancaire",
+    CASH: "Espèces",
+    CHECK: "Chèque",
+    OTHER: "Autre",
+  };
+
+  return labels[method] ?? method;
+}
+
+function styleHeader(row: ExcelJS.Row) {
+  row.font = { bold: true, color: { argb: "FFFFFFFF" } };
+  row.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FF0F172A" },
+  };
+  row.alignment = { vertical: "middle" };
+}
+
+function autoFitColumns(sheet: ExcelJS.Worksheet) {
+  sheet.columns.forEach((column) => {
+    let maxLength = 12;
+
+    column.eachCell?.({ includeEmpty: true }, (cell) => {
+      const value = String(cell.value ?? "");
+      maxLength = Math.max(maxLength, value.length + 2);
+    });
+
+    column.width = Math.min(maxLength, 42);
+  });
+}
 
 export async function generateInvoiceExcel(data: InvoiceExportData) {
-  const { invoice } = data;
-  const workbook = new ExcelJS.Workbook();
+  const { invoice, organization } = data;
+  const profile = invoice.profile;
+  const client = invoice.client;
 
+  const workbook = new ExcelJS.Workbook();
   workbook.creator = "FacturePro";
   workbook.created = new Date();
 
   const summary = workbook.addWorksheet("Facture");
-  const timesheet = workbook.addWorksheet("Feuille de temps");
-  const payments = workbook.addWorksheet("Paiements");
+  summary.views = [{ state: "frozen", ySplit: 1 }];
 
-  summary.columns = [
-    { header: "Champ", key: "field", width: 32 },
-    { header: "Valeur", key: "value", width: 60 },
-  ];
-
-  const profile = invoice.profile;
-
-  summary.addRows([
-    { field: "Numéro", value: invoice.number },
-    { field: "Statut", value: invoice.status },
-    { field: "Date émission", value: formatDate(invoice.issueDate) },
-    { field: "Date échéance", value: formatDate(invoice.dueDate) },
-    { field: "Période", value: `${formatDate(invoice.periodStart)} au ${formatDate(invoice.periodEnd)}` },
-    { field: "Émetteur", value: profile?.legalName ?? data.organization.name },
-    { field: "SIRET émetteur", value: profile?.siret ?? "" },
-    { field: "Client", value: invoice.client.legalName },
-    { field: "SIRET client", value: invoice.client.siret ?? "" },
-    { field: "Sous-total", value: money(invoice.subtotal) },
-    { field: "TVA", value: money(invoice.vatAmount) },
-    { field: "Total", value: money(invoice.total) },
-    { field: "IBAN", value: profile?.iban ?? "" },
-    { field: "Mention légale", value: invoice.legalNotice ?? "" },
+  summary.addRow(["Facture", invoice.number]);
+  summary.addRow(["Statut", statusLabel(invoice.status)]);
+  summary.addRow(["Organisation", organization.name]);
+  summary.addRow(["Émetteur", profile?.legalName ?? organization.name]);
+  summary.addRow(["Client", client.legalName]);
+  summary.addRow(["Date émission", formatDate(invoice.issueDate)]);
+  summary.addRow(["Date échéance", formatDate(invoice.dueDate)]);
+  summary.addRow([
+    "Période",
+    `${formatDate(invoice.periodStart)} au ${formatDate(invoice.periodEnd)}`,
   ]);
-
   summary.addRow([]);
-  summary.addRow(["Lignes de facture", ""]);
 
-  const lineStart = summary.rowCount + 1;
-  summary.addRow(["Désignation", "Description", "Quantité", "Unité", "Prix unitaire", "Total"]);
+  const paidAmount = invoice.payments.reduce(
+    (sum, payment) => sum + money(payment.amount),
+    0
+  );
+  const remainingAmount = Math.max(0, money(invoice.total) - paidAmount);
 
-  invoice.lines.forEach((line) => {
-    summary.addRow([
+  summary.addRow(["Sous-total", money(invoice.subtotal)]);
+  summary.addRow(["TVA", money(invoice.vatAmount)]);
+  summary.addRow(["Total", money(invoice.total)]);
+  summary.addRow(["Déjà payé", paidAmount]);
+  summary.addRow(["Reste à payer", remainingAmount]);
+
+  summary.getColumn(1).font = { bold: true };
+  summary.getColumn(2).numFmt = '#,##0.00 €';
+  summary.getCell("A1").font = { bold: true, size: 18 };
+  summary.getCell("B1").font = { bold: true, size: 18 };
+  autoFitColumns(summary);
+
+  const lines = workbook.addWorksheet("Lignes");
+  lines.addRow([
+    "Ordre",
+    "Libellé",
+    "Description",
+    "Quantité",
+    "Unité",
+    "Prix unitaire",
+    "Total",
+  ]);
+  styleHeader(lines.getRow(1));
+
+  invoice.lines.forEach((line, index) => {
+    lines.addRow([
+      index + 1,
       line.label,
       line.description ?? "",
-      money(line.quantity),
-      line.unit,
+      line.unit === "HOUR" ? formatHours(money(line.quantity)) : money(line.quantity),
+      unitLabel(line.unit),
       money(line.unitPrice),
       money(line.total),
     ]);
   });
 
-  summary.getRow(1).font = { bold: true };
-  summary.getColumn(2).numFmt = "#,##0.00 €";
+  lines.getColumn(6).numFmt = '#,##0.00 €';
+  lines.getColumn(7).numFmt = '#,##0.00 €';
+  autoFitColumns(lines);
 
-  for (const row of summary.getRows(lineStart, invoice.lines.length + 1) ?? []) {
-    row.eachCell((cell) => {
-      cell.border = {
-        top: { style: "thin", color: { argb: "FFE5ECE7" } },
-        left: { style: "thin", color: { argb: "FFE5ECE7" } },
-        bottom: { style: "thin", color: { argb: "FFE5ECE7" } },
-        right: { style: "thin", color: { argb: "FFE5ECE7" } },
-      };
-    });
-  }
-
-  timesheet.columns = [
-    { header: "Date", key: "date", width: 16 },
-    { header: "Début", key: "start", width: 12 },
-    { header: "Fin", key: "end", width: 12 },
-    { header: "Lieu", key: "location", width: 36 },
-    { header: "Heures", key: "hours", width: 14 },
-    { header: "Taux", key: "rate", width: 14 },
-    { header: "Montant", key: "amount", width: 16 },
-  ];
+  const missions = workbook.addWorksheet("Missions");
+  missions.addRow([
+    "Date",
+    "Début",
+    "Fin",
+    "Lieu",
+    "Titre",
+    "Heures",
+    "Taux horaire",
+  ]);
+  styleHeader(missions.getRow(1));
 
   invoice.missions.forEach((mission) => {
-    const hours = money(mission.quantityHours);
-    const rate = money(mission.hourlyRate);
-
-    timesheet.addRow({
-      date: formatDate(mission.date),
-      start: formatTime(mission.startTime),
-      end: formatTime(mission.endTime),
-      location: mission.locationName ?? "",
-      hours,
-      rate,
-      amount: hours * rate,
-    });
+    missions.addRow([
+      formatDate(mission.date),
+      formatTime(mission.startTime),
+      formatTime(mission.endTime),
+      mission.locationName ?? "",
+      mission.title,
+      formatHours(money(mission.quantityHours)),
+      money(mission.hourlyRate),
+    ]);
   });
 
-  timesheet.addRow([]);
-  timesheet.addRow(["Total", "", "", "", { formula: `SUM(E2:E${invoice.missions.length + 1})` }, "", { formula: `SUM(G2:G${invoice.missions.length + 1})` }]);
+  missions.getColumn(7).numFmt = '#,##0.00 €';
+  autoFitColumns(missions);
 
-  payments.columns = [
-    { header: "Date", key: "date", width: 16 },
-    { header: "Méthode", key: "method", width: 18 },
-    { header: "Référence", key: "reference", width: 28 },
-    { header: "Montant", key: "amount", width: 16 },
-    { header: "Notes", key: "notes", width: 40 },
-  ];
+  const payments = workbook.addWorksheet("Paiements");
+  payments.addRow(["Date", "Méthode", "Montant", "Référence", "Notes"]);
+  styleHeader(payments.getRow(1));
 
   invoice.payments.forEach((payment) => {
-    payments.addRow({
-      date: formatDate(payment.paidAt),
-      method: payment.method,
-      reference: payment.reference ?? "",
-      amount: money(payment.amount),
-      notes: payment.notes ?? "",
-    });
+    payments.addRow([
+      formatDate(payment.paidAt),
+      paymentMethodLabel(payment.method),
+      money(payment.amount),
+      payment.reference ?? "",
+      payment.notes ?? "",
+    ]);
   });
 
-  for (const sheet of [summary, timesheet, payments]) {
-    sheet.views = [{ state: "frozen", ySplit: 1 }];
+  payments.getColumn(3).numFmt = '#,##0.00 €';
+  autoFitColumns(payments);
 
-    sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
-    sheet.getRow(1).fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FF0B7A3B" },
-    };
-
-    sheet.eachRow((row) => {
-      row.eachCell((cell) => {
-        cell.alignment = { vertical: "middle", wrapText: true };
-      });
-    });
-  }
-
-  timesheet.getColumn(6).numFmt = "#,##0.00 €";
-  timesheet.getColumn(7).numFmt = "#,##0.00 €";
-  payments.getColumn(4).numFmt = "#,##0.00 €";
+  const legal = workbook.addWorksheet("Mentions");
+  legal.addRow(["Mention légale"]);
+  styleHeader(legal.getRow(1));
+  legal.addRow([invoice.legalNotice ?? profile?.invoiceLegalNotice ?? ""]);
+  legal.addRow([]);
+  legal.addRow(["Notes"]);
+  legal.addRow([invoice.notes ?? ""]);
+  autoFitColumns(legal);
 
   const buffer = await workbook.xlsx.writeBuffer();
-  return Buffer.from(buffer);
+
+  return Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer as ArrayBuffer);
 }

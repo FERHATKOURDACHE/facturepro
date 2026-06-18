@@ -10,8 +10,11 @@ export async function GET(
   const { id } = await context.params;
   const data = await getInvoiceExportData(id);
   const pdf = await generateInvoicePdf(data);
+  const body = new Blob([pdf as BlobPart], {
+    type: "application/pdf",
+  });
 
-  return new Response(pdf, {
+  return new Response(body, {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="${data.invoice.number}.pdf"`,
