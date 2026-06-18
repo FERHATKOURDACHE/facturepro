@@ -31,6 +31,14 @@ const nav = [
   { href: "/compte", label: "Mon compte", icon: UserCircle },
 ];
 
+const workflowSteps = [
+  "Client",
+  "Mission",
+  "Facture",
+  "Paiement",
+  "URSSAF",
+];
+
 export async function AppShell({
   children,
   title,
@@ -67,7 +75,7 @@ export async function AppShell({
             <div>
               <p className="text-sm font-black">Espace professionnel</p>
               <p className="mt-1 text-xs leading-5 text-slate-300">
-                Clients, missions, factures et URSSAF au même endroit.
+                Parcours complet : client, mission, facture, paiement et URSSAF.
               </p>
             </div>
           </div>
@@ -199,6 +207,13 @@ export async function AppShell({
                     Mon compte
                   </Link>
                 )}
+                <Link
+                  href="/ai"
+                  className="w-fit rounded-full border border-emerald-100 bg-emerald-50 px-5 py-3 text-sm font-black text-[var(--primary)] transition hover:bg-emerald-100"
+                >
+                  Importer IA
+                </Link>
+
 
                 <Link
                   href="/factures"
