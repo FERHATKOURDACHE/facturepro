@@ -176,6 +176,25 @@ export async function validateMissionAction(formData: FormData) {
   revalidatePath("/dashboard");
 }
 
+export async function validateDraftMissionsAction() {
+  const organization = await getCurrentOrganization();
+
+  await prisma.mission.updateMany({
+    where: {
+      organizationId: organization.id,
+      status: "DRAFT",
+      invoiceId: null,
+    },
+    data: {
+      status: "VALIDATED",
+    },
+  });
+
+  revalidatePath("/missions");
+  revalidatePath("/dashboard");
+  revalidatePath("/factures");
+}
+
 export async function draftMissionAction(formData: FormData) {
   const organization = await getCurrentOrganization();
   const id = requiredString(formData, "id");
@@ -227,5 +246,6 @@ export async function deleteMissionAction(formData: FormData) {
   revalidatePath("/dashboard");
   revalidatePath("/factures");
 }
+
 
 

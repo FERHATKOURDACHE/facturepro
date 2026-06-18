@@ -8,6 +8,7 @@ import {
   draftMissionAction,
   updateMissionAction,
   validateMissionAction,
+  validateDraftMissionsAction,
 } from "@/app/missions/actions";
 import { getMissionPageData } from "@/lib/mission-queries";
 import {
@@ -56,6 +57,7 @@ export default async function MissionsPage() {
   await requireCompanyProfileCompleted();
   const { clients, missions, stats, weeklyTotals, locationTotals } = await getMissionPageData();
   const defaultClient = clients[0];
+  const draftCount = missions.filter((mission) => mission.status === "DRAFT").length;
 
   return (
     <AppShell
@@ -198,9 +200,19 @@ export default async function MissionsPage() {
             </p>
             <h2 className="mt-2 text-2xl font-black">Missions enregistrées</h2>
           </div>
-          <span className="badge bg-slate-100 text-slate-700">
-            {missions.length} ligne{missions.length > 1 ? "s" : ""}
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            {draftCount > 0 && (
+              <form action={validateDraftMissionsAction}>
+                <button className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5">
+                  Valider {draftCount} brouillon{draftCount > 1 ? "s" : ""}
+                </button>
+              </form>
+            )}
+
+            <span className="badge bg-slate-100 text-slate-700">
+              {missions.length} ligne{missions.length > 1 ? "s" : ""}
+            </span>
+          </div>
         </div>
 
         {missions.length === 0 ? (
@@ -344,6 +356,7 @@ export default async function MissionsPage() {
     </AppShell>
   );
 }
+
 
 
 
